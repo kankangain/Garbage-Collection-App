@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Councilor Dashboard - Garbage Collection System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Welcome Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="bg-success text-white p-4 rounded">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h2 class="mb-2">
+                            <i class="bi bi-shield-check"></i> 
+                            Councilor Dashboard - Ward {{ ward_number }}
+                        </h2>
+                        <p class="mb-0">
+                            Manage garbage collection requests and labour assignments for your ward.
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <a href="{% url 'gc_requests:councilor_requests' %}" class="btn btn-light btn-lg">
+                            <i class="bi bi-list-check"></i> View All Requests
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ward Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card dashboard-card text-center">
+                <div class="card-body">
+                    <div class="dashboard-stat text-warning">{{ pending_requests }}</div>
+                    <h6 class="card-title">Pending</h6>
+                    <p class="text-muted mb-0">Need assignment</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card dashboard-card text-center">
+                <div class="card-body">
+                    <div class="dashboard-stat text-primary">{{ in_progress_requests }}</div>
+                    <h6 class="card-title">In Progress</h6>
+                    <p class="text-muted mb-0">Being worked on</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card dashboard-card text-center">
+                <div class="card-body">
+                    <div class="dashboard-stat text-success">{{ completed_requests }}</div>
+                    <h6 class="card-title">Completed</h6>
+                    <p class="text-muted mb-0">Successfully done</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card dashboard-card text-center">
+                <div class="card-body">
+                    <div class="dashboard-stat text-info">{{ pending_approvals }}</div>
+                    <h6 class="card-title">Pending Approval</h6>
+                    <p class="text-muted mb-0">Need review</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-lightning-charge"></i> Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'gc_requests:councilor_requests' %}" class="btn btn-outline-primary w-100 py-3">
+                                <i class="bi bi-clipboard-check d-block mb-2" style="font-size: 2rem;"></i>
+                                Ward Requests
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'gc_requests:councilor_reports' %}" class="btn btn-outline-success w-100 py-3">
+                                <i class="bi bi-file-earmark-check d-block mb-2" style="font-size: 2rem;"></i>
+                                Completion Reports
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'accounts:user_management' %}" class="btn btn-outline-info w-100 py-3">
+                                <i class="bi bi-people d-block mb-2" style="font-size: 2rem;"></i>
+                                Manage Users
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'notifications:list' %}" class="btn btn-outline-warning w-100 py-3">
+                                <i class="bi bi-bell d-block mb-2" style="font-size: 2rem;"></i>
+                                Notifications
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Requests -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-clock-history"></i> Recent Requests in Ward {{ ward_number }}
+                    </h5>
+                    <a href="{% url 'gc_requests:councilor_requests' %}" class="btn btn-sm btn-outline-primary">
+                        View All
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if recent_requests %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Requester</th>
+                                        <th>Category</th>
+                                        <th>Status</th>
+                                        <th>Date</th>
+                                        <th>Assigned Labour</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for request in recent_requests %}
+                                    <tr>
+                                        <td><strong>#{{ request.id }}</strong></td>
+                                        <td>{{ request.requester_full_name }}</td>
+                                        <td>
+                                            <span class="badge bg-secondary">
+                                                {{ request.get_category_display }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge status-{{ request.status }}">
+                                                {{ request.get_status_display }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <small data-timestamp="{{ request.created_at|date:'c' }}">
+                                                {{ request.created_at|date:'M d, Y' }}
+                                            </small>
+                                        </td>
+                                        <td>
+                                            {% if request.assigned_labour %}
+                                                {{ request.assigned_labour.username }}
+                                            {% else %}
+                                                <span class="text-warning">Not assigned</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <a href="{% url 'gc_requests:request_detail' request.id %}" 
+                                                   class="btn btn-outline-primary">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                                {% if request.status == 'pending' %}
+                                                    <a href="{% url 'gc_requests:assign_request' request.id %}" 
+                                                       class="btn btn-outline-success">
+                                                        <i class="bi bi-person-plus"></i>
+                                                    </a>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-clipboard" style="font-size: 3rem; opacity: 0.3;"></i>
+                            <h5 class="mt-3 text-muted">No requests in your ward yet</h5>
+                            <p class="text-muted">
+                                Requests from Ward {{ ward_number }} will appear here.
+                            </p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

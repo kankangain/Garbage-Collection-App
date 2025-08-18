@@ -1,0 +1,314 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}My Assignments - Garbage Collection System{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>
+                <i class="bi bi-list-task"></i> My Assignments
+            </h2>
+            <p class="text-muted mb-0">Requests assigned to you for collection</p>
+        </div>
+        <div class="btn-group">
+            <a href="{% url 'gc_requests:labour_dashboard' %}" class="btn btn-outline-primary">
+                <i class="bi bi-house"></i> Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Filter Tabs -->
+    <ul class="nav nav-tabs mb-4" id="statusTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="assigned-tab" data-bs-toggle="tab" data-bs-target="#assigned" type="button">
+                <i class="bi bi-clock"></i> Assigned ({{ assigned_count }})
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="in-progress-tab" data-bs-toggle="tab" data-bs-target="#in-progress" type="button">
+                <i class="bi bi-play-circle"></i> In Progress ({{ in_progress_count }})
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="completed-tab" data-bs-toggle="tab" data-bs-target="#completed" type="button">
+                <i class="bi bi-check-circle"></i> Completed ({{ completed_count }})
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="statusTabContent">
+        <!-- Assigned Requests -->
+        <div class="tab-pane fade show active" id="assigned" role="tabpanel">
+            <div class="row">
+                {% for request in assigned_requests %}
+                <div class="col-lg-6 col-xl-4 mb-4">
+                    <div class="card h-100 shadow-sm {% if request.is_overdue %}border-danger{% endif %}">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">Request #{{ request.id }}</h6>
+                            <div>
+                                <span class="badge bg-warning">Assigned</span>
+                                {% if request.is_overdue %}
+                                    <span class="badge bg-danger">
+                                        <i class="bi bi-exclamation-triangle"></i> Overdue
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <h6 class="text-muted mb-2">Location</h6>
+                                <p class="mb-1">
+                                    <i class="bi bi-geo-alt"></i> Ward {{ request.ward_number }}
+                                </p>
+                                <p class="small text-muted">{{ request.address|truncatechars:50 }}</p>
+                                {% if request.landmark %}
+                                    <p class="small text-muted">
+                                        <i class="bi bi-pin-map"></i> Near {{ request.landmark }}
+                                    </p>
+                                {% endif %}
+                            </div>
+
+                            <div class="mb-3">
+                                <h6 class="text-muted mb-2">Details</h6>
+                                <span class="badge bg-secondary me-2">{{ request.get_category_display }}</span>
+                                {% if request.time_remaining %}
+                                    <br><small class="{% if request.is_overdue %}text-danger{% else %}text-info{% endif %} mt-2 d-block">
+                                        <i class="bi bi-clock"></i> {{ request.time_remaining }}
+                                    </small>
+                                {% endif %}
+                            </div>
+
+                            {% if request.description %}
+                            <div class="mb-3">
+                                <h6 class="text-muted mb-2">Description</h6>
+                                <p class="small">{{ request.description|truncatechars:100 }}</p>
+                            </div>
+                            {% endif %}
+
+                            <div class="mb-3">
+                                <h6 class="text-muted mb-2">Requester</h6>
+                                <p class="mb-0">
+                                    <i class="bi bi-person"></i> {{ request.user.get_full_name|default:request.user.username }}
+                                </p>
+                                <small class="text-muted">Submitted {{ request.created_at|timesince }} ago</small>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <div class="btn-group w-100">
+                                <a href="{% url 'gc_requests:labour_request_detail' request.id %}" 
+                                   class="btn btn-outline-primary">
+                                    <i class="bi bi-eye"></i> View
+                                </a>
+                                <a href="{% url 'gc_requests:track_request' request.id %}" 
+                                   class="btn btn-outline-info">
+                                    <i class="bi bi-geo-alt"></i> Navigate
+                                </a>
+                                <form method="post" action="{% url 'gc_requests:start_work' request.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="bi bi-play-circle"></i> Start
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12">
+                    <div class="text-center py-5">
+                        <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
+                        <h5 class="mt-3 text-muted">No Assigned Requests</h5>
+                        <p class="text-muted">You have no new assignments at this time.</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- In Progress Requests -->
+        <div class="tab-pane fade" id="in-progress" role="tabpanel">
+            <div class="row">
+                {% for request in in_progress_requests %}
+                <div class="col-lg-6 col-xl-4 mb-4">
+                    <div class="card h-100 shadow-sm border-primary">
+                        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">Request #{{ request.id }}</h6>
+                            <span class="badge bg-light text-primary">In Progress</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <h6 class="text-muted mb-2">Location</h6>
+                                <p class="mb-1">
+                                    <i class="bi bi-geo-alt"></i> Ward {{ request.ward_number }}
+                                </p>
+                                <p class="small text-muted">{{ request.address|truncatechars:50 }}</p>
+                            </div>
+
+                            <div class="mb-3">
+                                <h6 class="text-muted mb-2">Progress</h6>
+                                <div class="progress mb-2" style="height: 10px;">
+                                    <div class="progress-bar bg-primary progress-bar-striped progress-bar-animated" 
+                                         style="width: 60%"></div>
+                                </div>
+                                <small class="text-muted">Work in progress...</small>
+                            </div>
+
+                            <div class="mb-3">
+                                <span class="badge bg-secondary">{{ request.get_category_display }}</span>
+                                {% if request.time_remaining %}
+                                    <br><small class="text-info mt-2 d-block">
+                                        <i class="bi bi-clock"></i> {{ request.time_remaining }}
+                                    </small>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <div class="btn-group w-100">
+                                <a href="{% url 'gc_requests:labour_request_detail' request.id %}" 
+                                   class="btn btn-outline-primary">
+                                    <i class="bi bi-eye"></i> Details
+                                </a>
+                                <a href="{% url 'gc_requests:complete_work' request.id %}" 
+                                   class="btn btn-success">
+                                    <i class="bi bi-check-circle"></i> Complete
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12">
+                    <div class="text-center py-5">
+                        <i class="bi bi-tools text-muted" style="font-size: 3rem;"></i>
+                        <h5 class="mt-3 text-muted">No Active Work</h5>
+                        <p class="text-muted">You are not currently working on any requests.</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Completed Requests -->
+        <div class="tab-pane fade" id="completed" role="tabpanel">
+            <div class="row">
+                {% for request in completed_requests %}
+                <div class="col-lg-6 col-xl-4 mb-4">
+                    <div class="card h-100 shadow-sm border-success">
+                        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">Request #{{ request.id }}</h6>
+                            <span class="badge {% if request.status == 'approved' %}bg-light text-success{% else %}bg-warning text-dark{% endif %}">
+                                {{ request.get_status_display }}
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <h6 class="text-muted mb-2">Location</h6>
+                                <p class="mb-1">
+                                    <i class="bi bi-geo-alt"></i> Ward {{ request.ward_number }}
+                                </p>
+                                <p class="small text-muted">{{ request.address|truncatechars:50 }}</p>
+                            </div>
+
+                            <div class="mb-3">
+                                <h6 class="text-muted mb-2">Completion</h6>
+                                <p class="mb-1">
+                                    <i class="bi bi-calendar-check"></i> {{ request.completed_at|date:'M d, Y H:i' }}
+                                </p>
+                                {% if request.status == 'approved' and request.approved_at %}
+                                    <small class="text-success">
+                                        <i class="bi bi-check-circle"></i> Approved {{ request.approved_at|timesince }} ago
+                                    </small>
+                                {% elif request.status == 'completed' %}
+                                    <small class="text-warning">
+                                        <i class="bi bi-clock"></i> Awaiting councilor approval
+                                    </small>
+                                {% endif %}
+                            </div>
+
+                            <div class="mb-3">
+                                <span class="badge bg-secondary">{{ request.get_category_display }}</span>
+                            </div>
+
+                            {% with request.completionreport_set.first as completion %}
+                            {% if completion and completion.notes %}
+                            <div class="mb-3">
+                                <h6 class="text-muted mb-2">Completion Notes</h6>
+                                <p class="small">{{ completion.notes|truncatechars:100 }}</p>
+                            </div>
+                            {% endif %}
+                            {% endwith %}
+                        </div>
+                        <div class="card-footer">
+                            <a href="{% url 'gc_requests:labour_request_detail' request.id %}" 
+                               class="btn btn-outline-primary w-100">
+                                <i class="bi bi-eye"></i> View Details
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12">
+                    <div class="text-center py-5">
+                        <i class="bi bi-check-circle text-muted" style="font-size: 3rem;"></i>
+                        <h5 class="mt-3 text-muted">No Completed Requests</h5>
+                        <p class="text-muted">Completed requests will appear here.</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row mt-5">
+        <div class="col">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h6 class="text-muted mb-3">
+                        <i class="bi bi-graph-up"></i> Your Performance Today
+                    </h6>
+                    <div class="row text-center">
+                        <div class="col-3">
+                            <h4 class="text-warning">{{ assigned_count }}</h4>
+                            <small class="text-muted">Assigned</small>
+                        </div>
+                        <div class="col-3">
+                            <h4 class="text-primary">{{ in_progress_count }}</h4>
+                            <small class="text-muted">In Progress</small>
+                        </div>
+                        <div class="col-3">
+                            <h4 class="text-success">{{ completed_count }}</h4>
+                            <small class="text-muted">Completed</small>
+                        </div>
+                        <div class="col-3">
+                            <h4 class="text-info">{{ total_count }}</h4>
+                            <small class="text-muted">Total</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-refresh every 2 minutes
+setInterval(function() {
+    location.reload();
+}, 120000);
+
+// Show current location-based sorting suggestion
+if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(function(position) {
+        // In a real app, you'd sort requests by proximity
+        console.log('Current location:', position.coords.latitude, position.coords.longitude);
+    });
+}
+</script>
+{% endblock %}

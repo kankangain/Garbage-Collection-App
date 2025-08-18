@@ -1,0 +1,225 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Home - Garbage Collection System{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="bg-success text-white py-5 mb-5" style="background: linear-gradient(135deg, #28a745, #20c997);">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6">
+                <div class="hero-content">
+                    <h1 class="display-4 fw-bold mb-4">
+                        <i class="bi bi-recycle"></i> Clean City Initiative
+                    </h1>
+                    <p class="lead mb-4">
+                        Report garbage collection needs in your area quickly and efficiently. 
+                        Track your requests and help keep our city clean.
+                    </p>
+                    <div class="d-flex gap-3">
+                        {% if user.is_authenticated %}
+                            {% if user.role == 'user' %}
+                                <a href="{% url 'gc_requests:create_request' %}" class="btn btn-light btn-lg">
+                                    <i class="bi bi-plus-circle"></i> Submit Request
+                                </a>
+                                <a href="{% url 'gc_requests:my_requests' %}" class="btn btn-outline-light btn-lg">
+                                    <i class="bi bi-list-ul"></i> My Requests
+                                </a>
+                            {% else %}
+                                <a href="{% url 'gc_requests:'|add:user.role|add:'_dashboard' %}" class="btn btn-light btn-lg">
+                                    <i class="bi bi-house-door"></i> Dashboard
+                                </a>
+                            {% endif %}
+                        {% else %}
+                            <a href="{% url 'accounts:signup' %}" class="btn btn-light btn-lg">
+                                <i class="bi bi-person-plus"></i> Get Started
+                            </a>
+                            <a href="{% url 'accounts:login' %}" class="btn btn-outline-light btn-lg">
+                                <i class="bi bi-box-arrow-in-right"></i> Login
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="hero-image text-center">
+                    <i class="bi bi-building" style="font-size: 15rem; opacity: 0.3;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- How It Works Section -->
+<div class="container mb-5">
+    <div class="text-center mb-5">
+        <h2 class="display-5 fw-bold text-dark">How It Works</h2>
+        <p class="lead text-muted">Simple steps to get your garbage collected</p>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-4 text-center mb-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <div class="bg-success text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                         style="width: 80px; height: 80px;">
+                        <i class="bi bi-person-plus" style="font-size: 2rem;"></i>
+                    </div>
+                    <h4 class="card-title">1. Sign Up</h4>
+                    <p class="card-text text-muted">
+                        Create your account using your phone number. Email is optional but 
+                        recommended for notifications.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 text-center mb-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <div class="bg-success text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                         style="width: 80px; height: 80px;">
+                        <i class="bi bi-camera" style="font-size: 2rem;"></i>
+                    </div>
+                    <h4 class="card-title">2. Submit Request</h4>
+                    <p class="card-text text-muted">
+                        Take a photo of the garbage, provide location details and submit your request. 
+                        Our team will be notified immediately.
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 text-center mb-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <div class="bg-success text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" 
+                         style="width: 80px; height: 80px;">
+                        <i class="bi bi-check-circle" style="font-size: 2rem;"></i>
+                    </div>
+                    <h4 class="card-title">3. Track Progress</h4>
+                    <p class="card-text text-muted">
+                        Monitor your request status and receive notifications when the garbage 
+                        collection is completed.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Section -->
+<div class="bg-light py-5">
+    <div class="container">
+        <div class="row text-center">
+            <div class="col-6 col-md-3 mb-4">
+                <div class="stat-item">
+                    <h3 class="display-4 fw-bold text-success">{{ total_requests|default:0 }}</h3>
+                    <p class="text-muted mb-0">Total Requests</p>
+                </div>
+            </div>
+            <div class="col-6 col-md-3 mb-4">
+                <div class="stat-item">
+                    <h3 class="display-4 fw-bold text-success">24/7</h3>
+                    <p class="text-muted mb-0">Service Available</p>
+                </div>
+            </div>
+            <div class="col-6 col-md-3 mb-4">
+                <div class="stat-item">
+                    <h3 class="display-4 fw-bold text-success">72h</h3>
+                    <p class="text-muted mb-0">Max Response Time</p>
+                </div>
+            </div>
+            <div class="col-6 col-md-3 mb-4">
+                <div class="stat-item">
+                    <h3 class="display-4 fw-bold text-success">100%</h3>
+                    <p class="text-muted mb-0">Free Service</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- About Section -->
+<div class="container py-5">
+    <div class="row align-items-center">
+        <div class="col-lg-6 mb-4 mb-lg-0">
+            <h2 class="display-5 fw-bold text-dark mb-4">About Our Service</h2>
+            <p class="lead text-muted mb-4">
+                Our Garbage Collection Request System is designed to make waste management 
+                efficient and transparent. Citizens can easily report garbage collection needs 
+                and our dedicated team ensures timely collection.
+            </p>
+            
+            <div class="row">
+                <div class="col-sm-6">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-success text-white rounded me-3 p-2">
+                            <i class="bi bi-clock"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-0">Quick Response</h6>
+                            <small class="text-muted">Real-time notifications</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-success text-white rounded me-3 p-2">
+                            <i class="bi bi-geo-alt"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-0">Location Tracking</h6>
+                            <small class="text-muted">Precise location details</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-success text-white rounded me-3 p-2">
+                            <i class="bi bi-shield-check"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-0">Secure & Private</h6>
+                            <small class="text-muted">Your data is protected</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="bg-success text-white rounded me-3 p-2">
+                            <i class="bi bi-people"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-0">Community Driven</h6>
+                            <small class="text-muted">Together we can build a cleaner environment</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-6">
+            <div class="text-center bg-success rounded p-5 text-white">
+                <i class="bi bi-leaf" style="font-size: 5rem; opacity: 0.8;"></i>
+                <h3 class="mt-3 mb-3">Clean Environment</h3>
+                <p class="mb-0">Together we can build a cleaner and healthier community</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Call to Action -->
+{% if not user.is_authenticated %}
+<div class="bg-success text-white py-5">
+    <div class="container text-center">
+        <h2 class="display-5 fw-bold mb-4">Ready to Get Started?</h2>
+        <p class="lead mb-4">Join thousands of citizens making a difference in our community</p>
+        <a href="{% url 'accounts:signup' %}" class="btn btn-light btn-lg">
+            <i class="bi bi-person-plus"></i> Create Account Now
+        </a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

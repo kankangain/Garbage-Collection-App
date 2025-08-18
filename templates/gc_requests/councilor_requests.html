@@ -1,0 +1,397 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Ward Requests - Councilor{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>
+                <i class="bi bi-geo-alt"></i> Ward {{ user.ward_number }} Requests
+            </h2>
+            <p class="text-muted mb-0">Manage garbage collection requests in your ward</p>
+        </div>
+        <div class="btn-group">
+            <a href="{% url 'gc_requests:councilor_dashboard' %}" class="btn btn-outline-primary">
+                <i class="bi bi-house"></i> Dashboard
+            </a>
+            <a href="{% url 'gc_requests:councilor_reports' %}" class="btn btn-outline-info">
+                <i class="bi bi-file-earmark-text"></i> Reports
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Row -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center">
+                    <h3 class="mb-1">{{ total_requests }}</h3>
+                    <p class="mb-0">Total Requests</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body text-center">
+                    <h3 class="mb-1">{{ pending_requests }}</h3>
+                    <p class="mb-0">Pending</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-info text-white">
+                <div class="card-body text-center">
+                    <h3 class="mb-1">{{ active_requests }}</h3>
+                    <p class="mb-0">Active</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-{% if overdue_requests > 0 %}danger{% else %}success{% endif %} text-white">
+                <div class="card-body text-center">
+                    <h3 class="mb-1">{{ completed_requests }}</h3>
+                    <p class="mb-0">Completed</p>
+                    {% if overdue_requests > 0 %}
+                        <small><i class="bi bi-exclamation-triangle"></i> {{ overdue_requests }} overdue</small>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter and Search -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select">
+                        <option value="">All Status</option>
+                        <option value="pending" {% if request.GET.status == "pending" %}selected{% endif %}>Pending</option>
+                        <option value="assigned" {% if request.GET.status == "assigned" %}selected{% endif %}>Assigned</option>
+                        <option value="in_progress" {% if request.GET.status == "in_progress" %}selected{% endif %}>In Progress</option>
+                        <option value="completed" {% if request.GET.status == "completed" %}selected{% endif %}>Completed</option>
+                        <option value="approved" {% if request.GET.status == "approved" %}selected{% endif %}>Approved</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Category</label>
+                    <select name="category" class="form-select">
+                        <option value="">All Categories</option>
+                        <option value="household" {% if request.GET.category == "household" %}selected{% endif %}>Household Waste</option>
+                        <option value="construction" {% if request.GET.category == "construction" %}selected{% endif %}>Construction Debris</option>
+                        <option value="electronic" {% if request.GET.category == "electronic" %}selected{% endif %}>Electronic Waste</option>
+                        <option value="medical" {% if request.GET.category == "medical" %}selected{% endif %}>Medical Waste</option>
+                        <option value="bulk" {% if request.GET.category == "bulk" %}selected{% endif %}>Bulk Items</option>
+                        <option value="other" {% if request.GET.category == "other" %}selected{% endif %}>Other</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Date Range</label>
+                    <select name="date_range" class="form-select">
+                        <option value="">All Time</option>
+                        <option value="today" {% if request.GET.date_range == "today" %}selected{% endif %}>Today</option>
+                        <option value="week" {% if request.GET.date_range == "week" %}selected{% endif %}>This Week</option>
+                        <option value="month" {% if request.GET.date_range == "month" %}selected{% endif %}>This Month</option>
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="bi bi-funnel"></i> Filter
+                    </button>
+                    <a href="{% url 'gc_requests:councilor_requests' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-circle"></i> Clear
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Requests Table -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            {% if requests %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Requester & Location</th>
+                                <th>Category</th>
+                                <th>Status</th>
+                                <th>Assigned Labour</th>
+                                <th>Timeline</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for req in requests %}
+                            <tr class="{% if req.is_overdue %}table-warning{% endif %}">
+                                <td>
+                                    <strong>#{{ req.id }}</strong>
+                                    {% if req.is_overdue %}
+                                        <br><small class="text-danger">
+                                            <i class="bi bi-exclamation-triangle"></i> Overdue
+                                        </small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div>
+                                        <strong>{{ req.user.get_full_name|default:req.user.username }}</strong>
+                                        {% if req.user.phone_number %}
+                                            <br><a href="tel:{{ req.user.phone_number }}" class="text-decoration-none small">
+                                                <i class="bi bi-telephone"></i> {{ req.user.phone_number }}
+                                            </a>
+                                        {% endif %}
+                                        <br><small class="text-muted">{{ req.address|truncatechars:40 }}</small>
+                                        {% if req.landmark %}
+                                            <br><small class="text-muted">
+                                                <i class="bi bi-pin-map"></i> {{ req.landmark }}
+                                            </small>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ req.get_category_display }}</span>
+                                    {% if req.description %}
+                                        <br><small class="text-muted">
+                                            {{ req.description|truncatechars:30 }}
+                                        </small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge status-{{ req.status }}">
+                                        {{ req.get_status_display }}
+                                    </span>
+                                    {% if req.time_remaining %}
+                                        <br><small class="{% if req.is_overdue %}text-danger{% else %}text-muted{% endif %}">
+                                            <i class="bi bi-clock"></i> {{ req.time_remaining }}
+                                        </small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if req.assigned_labour %}
+                                        <div class="d-flex align-items-center">
+                                            <i class="bi bi-person-circle me-2"></i>
+                                            <div>
+                                                <strong>{{ req.assigned_labour.get_full_name|default:req.assigned_labour.username }}</strong>
+                                                {% if req.assigned_labour.phone_number %}
+                                                    <br><a href="tel:{{ req.assigned_labour.phone_number }}" class="text-decoration-none small">
+                                                        <i class="bi bi-telephone"></i> Call
+                                                    </a>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted">
+                                            <i class="bi bi-person-x"></i> Not assigned
+                                        </span>
+                                        {% if req.status == 'pending' %}
+                                            <br><button class="btn btn-sm btn-outline-primary mt-1" 
+                                                        onclick="assignLabour({{ req.id }})">
+                                                <i class="bi bi-person-plus"></i> Assign
+                                            </button>
+                                        {% endif %}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        <strong>Created:</strong> {{ req.created_at|date:'M d, H:i' }}
+                                    </small>
+                                    {% if req.assigned_at %}
+                                        <br><small class="text-muted">
+                                            <strong>Assigned:</strong> {{ req.assigned_at|date:'M d, H:i' }}
+                                        </small>
+                                    {% endif %}
+                                    {% if req.completed_at %}
+                                        <br><small class="text-success">
+                                            <strong>Completed:</strong> {{ req.completed_at|date:'M d, H:i' }}
+                                        </small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group-vertical btn-group-sm">
+                                        <a href="{% url 'gc_requests:request_detail' req.id %}" 
+                                           class="btn btn-outline-primary">
+                                            <i class="bi bi-eye"></i> View
+                                        </a>
+                                        <a href="{% url 'gc_requests:track_request' req.id %}" 
+                                           class="btn btn-outline-info">
+                                            <i class="bi bi-geo-alt"></i> Track
+                                        </a>
+                                        {% if req.status == 'completed' %}
+                                            <a href="{% url 'gc_requests:councilor_reports' %}?request_id={{ req.id }}" 
+                                               class="btn btn-outline-success">
+                                                <i class="bi bi-check-circle"></i> Review
+                                            </a>
+                                        {% elif req.status == 'pending' and not req.assigned_labour %}
+                                            <button class="btn btn-outline-warning" 
+                                                    onclick="assignLabour({{ req.id }})">
+                                                <i class="bi bi-person-plus"></i> Assign
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if is_paginated %}
+                <div class="border-top p-3">
+                    <nav aria-label="Requests pagination">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                                </li>
+                            {% endif %}
+                            
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-inbox" style="font-size: 4rem; opacity: 0.3;"></i>
+                    <h4 class="mt-3 text-muted">No Requests Found</h4>
+                    <p class="text-muted">
+                        {% if request.GET.status or request.GET.category %}
+                            Try adjusting your filters to see more results.
+                        {% else %}
+                            No garbage collection requests in your ward yet.
+                        {% endif %}
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Labour Assignment Modal -->
+<div class="modal fade" id="assignLabourModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Assign Labour Worker</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="assignLabourForm">
+                    <input type="hidden" id="requestId" name="request_id">
+                    <div class="mb-3">
+                        <label class="form-label">Select Labour Worker</label>
+                        <select class="form-select" id="labourSelect" name="labour_id" required>
+                            <option value="">Choose labour worker...</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes (Optional)</label>
+                        <textarea class="form-control" id="assignmentNotes" name="notes" rows="3" 
+                                  placeholder="Any special instructions or notes..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitLabourAssignment()">
+                    <i class="bi bi-person-plus"></i> Assign Labour
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function assignLabour(requestId) {
+    document.getElementById('requestId').value = requestId;
+    
+    // Load available labour workers
+    fetch('/requests/api/available-labour/')
+        .then(response => response.json())
+        .then(data => {
+            const select = document.getElementById('labourSelect');
+            select.innerHTML = '<option value="">Choose labour worker...</option>';
+            
+            data.labour_workers.forEach(worker => {
+                const option = document.createElement('option');
+                option.value = worker.id;
+                option.textContent = `${worker.name} (${worker.active_requests} active requests)`;
+                select.appendChild(option);
+            });
+        });
+    
+    new bootstrap.Modal(document.getElementById('assignLabourModal')).show();
+}
+
+function submitLabourAssignment() {
+    const form = document.getElementById('assignLabourForm');
+    const formData = new FormData(form);
+    const requestId = document.getElementById('requestId').value;
+    
+    fetch(`/requests/councilor/assign/${requestId}/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => {
+        if (response.ok) {
+            location.reload();
+        } else {
+            response.json().then(data => {
+                alert('Error assigning labour: ' + (data.error || 'Unknown error'));
+            });
+        }
+    })
+    .catch(error => {
+        alert('Network error: ' + error.message);
+    });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Auto-refresh every 5 minutes
+setInterval(function() {
+    location.reload();
+}, 300000);
+</script>
+{% endblock %}

@@ -1,0 +1,460 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}All Requests - Chairman{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>
+                <i class="bi bi-list-check"></i> All System Requests
+            </h2>
+            <p class="text-muted mb-0">Comprehensive view of all garbage collection requests across all wards</p>
+        </div>
+        <div class="btn-group">
+            <a href="{% url 'gc_requests:chairman_dashboard' %}" class="btn btn-outline-primary">
+                <i class="bi bi-house"></i> Dashboard
+            </a>
+            <a href="{% url 'gc_requests:analytics' %}" class="btn btn-outline-info">
+                <i class="bi bi-graph-up"></i> Analytics
+            </a>
+            <a href="{% url 'gc_requests:overdue_requests' %}" class="btn btn-outline-danger">
+                <i class="bi bi-exclamation-triangle"></i> Overdue ({{ overdue_count }})
+            </a>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row mb-4">
+        <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-1">{{ total_requests }}</h4>
+                    <small>Total</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-1">{{ pending_requests }}</h4>
+                    <small>Pending</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+            <div class="card bg-info text-white">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-1">{{ active_requests }}</h4>
+                    <small>Active</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-1">{{ completed_requests }}</h4>
+                    <small>Completed</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-1">{{ overdue_count }}</h4>
+                    <small>Overdue</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+            <div class="card bg-dark text-white">
+                <div class="card-body text-center py-2">
+                    <h4 class="mb-1">{{ completion_rate }}%</h4>
+                    <small>Success Rate</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Advanced Filters -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h6 class="mb-0">
+                <i class="bi bi-funnel"></i> Advanced Filters
+            </h6>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-2">
+                    <label class="form-label">Ward</label>
+                    <select name="ward" class="form-select">
+                        <option value="">All Wards</option>
+                        {% for i in "123456789012345678901234567890"|slice:":20" %}
+                            <option value="{{ forloop.counter }}" {% if request.GET.ward == forloop.counter|stringformat:"s" %}selected{% endif %}>
+                                Ward {{ forloop.counter }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select">
+                        <option value="">All Status</option>
+                        <option value="pending" {% if request.GET.status == "pending" %}selected{% endif %}>Pending</option>
+                        <option value="assigned" {% if request.GET.status == "assigned" %}selected{% endif %}>Assigned</option>
+                        <option value="in_progress" {% if request.GET.status == "in_progress" %}selected{% endif %}>In Progress</option>
+                        <option value="completed" {% if request.GET.status == "completed" %}selected{% endif %}>Completed</option>
+                        <option value="approved" {% if request.GET.status == "approved" %}selected{% endif %}>Approved</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Category</label>
+                    <select name="category" class="form-select">
+                        <option value="">All Categories</option>
+                        <option value="household" {% if request.GET.category == "household" %}selected{% endif %}>Household</option>
+                        <option value="construction" {% if request.GET.category == "construction" %}selected{% endif %}>Construction</option>
+                        <option value="electronic" {% if request.GET.category == "electronic" %}selected{% endif %}>Electronic</option>
+                        <option value="medical" {% if request.GET.category == "medical" %}selected{% endif %}>Medical</option>
+                        <option value="bulk" {% if request.GET.category == "bulk" %}selected{% endif %}>Bulk</option>
+                        <option value="other" {% if request.GET.category == "other" %}selected{% endif %}>Other</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Priority</label>
+                    <select name="priority" class="form-select">
+                        <option value="">All Priority</option>
+                        <option value="overdue" {% if request.GET.priority == "overdue" %}selected{% endif %}>Overdue</option>
+                        <option value="high" {% if request.GET.priority == "high" %}selected{% endif %}>High</option>
+                        <option value="normal" {% if request.GET.priority == "normal" %}selected{% endif %}>Normal</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Date Range</label>
+                    <select name="date_range" class="form-select">
+                        <option value="">All Time</option>
+                        <option value="today" {% if request.GET.date_range == "today" %}selected{% endif %}>Today</option>
+                        <option value="week" {% if request.GET.date_range == "week" %}selected{% endif %}>This Week</option>
+                        <option value="month" {% if request.GET.date_range == "month" %}selected{% endif %}>This Month</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="bi bi-search"></i> Search
+                    </button>
+                    <a href="{% url 'gc_requests:chairman_requests' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-circle"></i> Clear
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Requests Table -->
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            {% if requests %}
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>Ward</th>
+                                <th>Requester</th>
+                                <th>Category</th>
+                                <th>Location</th>
+                                <th>Status</th>
+                                <th>Assigned To</th>
+                                <th>Priority</th>
+                                <th>Timeline</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for req in requests %}
+                            <tr class="{% if req.is_overdue %}table-danger{% elif req.status == 'completed' %}table-success{% elif req.status == 'in_progress' %}table-info{% endif %}">
+                                <td>
+                                    <strong>#{{ req.id }}</strong>
+                                    {% if req.garbage_image %}
+                                        <br><i class="bi bi-image text-primary" title="Has image"></i>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">{{ req.ward_number }}</span>
+                                    {% with councilor=req.get_ward_councilor %}
+                                    {% if councilor %}
+                                        <br><small class="text-muted">{{ councilor.username|truncatechars:10 }}</small>
+                                    {% endif %}
+                                    {% endwith %}
+                                </td>
+                                <td>
+                                    <strong>{{ req.user.get_full_name|default:req.user.username|truncatechars:15 }}</strong>
+                                    {% if req.user.phone_number %}
+                                        <br><a href="tel:{{ req.user.phone_number }}" class="text-decoration-none small">
+                                            <i class="bi bi-telephone"></i>
+                                        </a>
+                                    {% endif %}
+                                    <br><small class="text-muted">{{ req.created_at|timesince }} ago</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary small">{{ req.get_category_display|truncatechars:8 }}</span>
+                                    {% if req.description %}
+                                        <br><small class="text-muted" title="{{ req.description }}">
+                                            {{ req.description|truncatechars:20 }}
+                                        </small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small>{{ req.address|truncatechars:25 }}</small>
+                                    {% if req.landmark %}
+                                        <br><small class="text-muted">
+                                            <i class="bi bi-pin-map"></i> {{ req.landmark|truncatechars:15 }}
+                                        </small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge status-{{ req.status }} small">
+                                        {{ req.get_status_display }}
+                                    </span>
+                                    {% if req.is_overdue %}
+                                        <br><small class="text-danger">
+                                            <i class="bi bi-exclamation-triangle"></i> Overdue
+                                        </small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if req.assigned_labour %}
+                                        <small>
+                                            <i class="bi bi-person-circle"></i>
+                                            {{ req.assigned_labour.get_full_name|default:req.assigned_labour.username|truncatechars:12 }}
+                                        </small>
+                                        {% if req.assigned_labour.phone_number %}
+                                            <br><a href="tel:{{ req.assigned_labour.phone_number }}" class="text-decoration-none small">
+                                                <i class="bi bi-telephone"></i>
+                                            </a>
+                                        {% endif %}
+                                    {% else %}
+                                        <small class="text-muted">
+                                            <i class="bi bi-person-x"></i> Unassigned
+                                        </small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if req.is_overdue %}
+                                        <span class="badge bg-danger small">URGENT</span>
+                                    {% elif req.status == 'pending' %}
+                                        <span class="badge bg-warning small">NORMAL</span>
+                                    {% else %}
+                                        <span class="badge bg-success small">ACTIVE</span>
+                                    {% endif %}
+                                    {% if req.time_remaining %}
+                                        <br><small class="{% if req.is_overdue %}text-danger{% else %}text-muted{% endif %}">
+                                            {{ req.time_remaining }}
+                                        </small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        <strong>Created:</strong><br>{{ req.created_at|date:'M d, H:i' }}
+                                    </small>
+                                    {% if req.assigned_at %}
+                                        <br><small class="text-muted">
+                                            <strong>Assigned:</strong><br>{{ req.assigned_at|date:'M d, H:i' }}
+                                        </small>
+                                    {% endif %}
+                                    {% if req.completed_at %}
+                                        <br><small class="text-success">
+                                            <strong>Done:</strong><br>{{ req.completed_at|date:'M d, H:i' }}
+                                        </small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group-vertical btn-group-sm">
+                                        <a href="{% url 'gc_requests:request_detail' req.id %}" 
+                                           class="btn btn-outline-primary btn-sm">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a href="{% url 'gc_requests:track_request' req.id %}" 
+                                           class="btn btn-outline-info btn-sm">
+                                            <i class="bi bi-geo-alt"></i>
+                                        </a>
+                                        {% if req.is_overdue %}
+                                            <button class="btn btn-outline-danger btn-sm" 
+                                                    onclick="escalateRequest({{ req.id }})" 
+                                                    title="Escalate">
+                                                <i class="bi bi-arrow-up-circle"></i>
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if is_paginated %}
+                <div class="border-top p-3">
+                    <nav aria-label="Requests pagination">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.ward %}&ward={{ request.GET.ward }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}">
+                                        Previous
+                                    </a>
+                                </li>
+                            {% endif %}
+                            
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                                </span>
+                            </li>
+                            
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.ward %}&ward={{ request.GET.ward }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}">
+                                        Next
+                                    </a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    
+                    <div class="text-center mt-2">
+                        <small class="text-muted">
+                            Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ page_obj.paginator.count }} requests
+                        </small>
+                    </div>
+                </div>
+                {% endif %}
+                
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-inbox" style="font-size: 4rem; opacity: 0.3;"></i>
+                    <h4 class="mt-3 text-muted">No Requests Found</h4>
+                    <p class="text-muted">
+                        {% if request.GET.ward or request.GET.status or request.GET.category %}
+                            Try adjusting your filters to see more results.
+                        {% else %}
+                            No garbage collection requests have been submitted yet.
+                        {% endif %}
+                    </p>
+                    <a href="{% url 'gc_requests:chairman_requests' %}" class="btn btn-outline-primary">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh Page
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Export Options -->
+    <div class="row mt-4">
+        <div class="col">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">
+                                <i class="bi bi-download"></i> Export Data
+                            </h6>
+                            <small class="text-muted">Download filtered results for reporting</small>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-outline-primary" onclick="exportToCSV()">
+                                <i class="bi bi-file-earmark-spreadsheet"></i> CSV
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="exportToPDF()">
+                                <i class="bi bi-file-earmark-pdf"></i> PDF
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function escalateRequest(requestId) {
+    if (confirm('Send urgent notifications to all relevant parties for this overdue request?')) {
+        fetch(`/api/escalate-request/${requestId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Request escalated successfully. Urgent notifications sent.');
+            } else {
+                alert('Error escalating request: ' + data.error);
+            }
+        });
+    }
+}
+
+function exportToCSV() {
+    const currentUrl = window.location.href;
+    window.open(currentUrl + (currentUrl.includes('?') ? '&' : '?') + 'export=csv');
+}
+
+function exportToPDF() {
+    const currentUrl = window.location.href;
+    window.open(currentUrl + (currentUrl.includes('?') ? '&' : '?') + 'export=pdf');
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Auto-refresh every 10 minutes
+setInterval(function() {
+    location.reload();
+}, 600000);
+
+// Real-time updates notification
+let lastUpdateTime = Date.now();
+setInterval(function() {
+    fetch('/api/requests-updated-since/' + lastUpdateTime)
+        .then(response => response.json())
+        .then(data => {
+            if (data.new_updates) {
+                const notification = document.createElement('div');
+                notification.className = 'alert alert-info alert-dismissible fade show position-fixed top-0 end-0 m-3';
+                notification.style.zIndex = '9999';
+                notification.innerHTML = `
+                    <i class="bi bi-info-circle me-2"></i>
+                    New updates available. <a href="#" onclick="location.reload()">Refresh page</a>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                document.body.appendChild(notification);
+                
+                // Auto-remove after 10 seconds
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 10000);
+            }
+            lastUpdateTime = Date.now();
+        });
+}, 60000); // Check every minute
+</script>
+{% endblock %}

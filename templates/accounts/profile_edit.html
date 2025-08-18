@@ -1,0 +1,341 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Edit Profile - Garbage Collection System{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2>
+                        <i class="bi bi-person-gear"></i> Edit Profile
+                    </h2>
+                    <p class="text-muted mb-0">Update your personal information and preferences</p>
+                </div>
+                <a href="{% url 'accounts:profile' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Profile
+                </a>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data" id="profileForm">
+                        {% csrf_token %}
+
+                        <!-- Basic Information -->
+                        <div class="row mb-4">
+                            <div class="col">
+                                <h5 class="text-muted mb-3">
+                                    <i class="bi bi-person-circle"></i> Basic Information
+                                </h5>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="first_name" class="form-label">First Name *</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="first_name" 
+                                       name="first_name" 
+                                       value="{{ form.first_name.value|default:'' }}"
+                                       required>
+                                {% if form.first_name.errors %}
+                                    <div class="text-danger small">{{ form.first_name.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4">
+                                <label for="middle_name" class="form-label">Middle Name</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="middle_name" 
+                                       name="middle_name" 
+                                       value="{{ form.middle_name.value|default:'' }}">
+                                {% if form.middle_name.errors %}
+                                    <div class="text-danger small">{{ form.middle_name.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4">
+                                <label for="last_name" class="form-label">Last Name *</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="last_name" 
+                                       name="last_name" 
+                                       value="{{ form.last_name.value|default:'' }}"
+                                       required>
+                                {% if form.last_name.errors %}
+                                    <div class="text-danger small">{{ form.last_name.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="username" class="form-label">Username *</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="username" 
+                                       name="username" 
+                                       value="{{ user_form_data.username|default:user.username }}"
+                                       required>
+                                <small class="text-muted">This will be used for login</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="email" class="form-label">Email Address</label>
+                                <input type="email" 
+                                       class="form-control" 
+                                       id="email" 
+                                       name="email" 
+                                       value="{{ user_form_data.email|default:user.email }}">
+                                <small class="text-muted">Optional - for notifications</small>
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label for="phone_number" class="form-label">Phone Number *</label>
+                                <input type="tel" 
+                                       class="form-control" 
+                                       id="phone_number" 
+                                       name="phone_number" 
+                                       value="{{ user_form_data.phone_number|default:user.phone_number }}"
+                                       required>
+                                <small class="text-muted">Used for SMS notifications and contact</small>
+                            </div>
+                            {% if user.role == 'labour' or user.role == 'councilor' %}
+                            <div class="col-md-6">
+                                <label for="ward_number" class="form-label">Ward Number</label>
+                                <select class="form-select" id="ward_number" name="ward_number">
+                                    <option value="">Select Ward</option>
+                                    {% for i in "123456789012345678901234567890"|slice:":20" %}
+                                        <option value="{{ forloop.counter }}" 
+                                                {% if user_form_data.ward_number == forloop.counter|stringformat:"s" or user.ward_number == forloop.counter %}selected{% endif %}>
+                                            Ward {{ forloop.counter }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <small class="text-muted">
+                                    {% if user.role == 'labour' %}Labour assignment ward{% else %}Your assigned ward{% endif %}
+                                </small>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Profile Information -->
+                        <hr>
+                        <div class="row mb-4">
+                            <div class="col">
+                                <h5 class="text-muted mb-3">
+                                    <i class="bi bi-card-text"></i> Additional Information
+                                </h5>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="address" class="form-label">Address *</label>
+                            <textarea class="form-control" 
+                                      id="address" 
+                                      name="address" 
+                                      rows="3" 
+                                      required
+                                      placeholder="Enter your complete address">{{ form.address.value|default:'' }}</textarea>
+                            <small class="text-muted">Your residential address for service delivery</small>
+                            {% if form.address.errors %}
+                                <div class="text-danger small">{{ form.address.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="landmark" class="form-label">Landmark</label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="landmark" 
+                                   name="landmark" 
+                                   value="{{ form.landmark.value|default:'' }}"
+                                   placeholder="Nearby landmark (optional)">
+                            <small class="text-muted">Helps with location identification</small>
+                            {% if form.landmark.errors %}
+                                <div class="text-danger small">{{ form.landmark.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="profile_picture" class="form-label">Profile Picture</label>
+                            <input type="file" 
+                                   class="form-control" 
+                                   id="profile_picture" 
+                                   name="profile_picture" 
+                                   accept="image/*">
+                            <small class="text-muted">Optional - helps with identification</small>
+                            {% if form.profile_picture.errors %}
+                                <div class="text-danger small">{{ form.profile_picture.errors.0 }}</div>
+                            {% endif %}
+                            {% if form.profile_picture.value %}
+                                <div class="mt-2">
+                                    <small class="text-muted">Current: {{ form.profile_picture.value }}</small>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <hr>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="bi bi-check-circle"></i> Save Changes
+                                </button>
+                                <a href="{% url 'accounts:profile' %}" class="btn btn-outline-secondary ms-2">
+                                    Cancel
+                                </a>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <button type="button" class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                                    <i class="bi bi-key"></i> Change Password
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Change Password Modal -->
+<div class="modal fade" id="changePasswordModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Change Password</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'accounts:change_password' %}" id="passwordForm">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="old_password" class="form-label">Current Password</label>
+                        <input type="password" class="form-control" id="old_password" name="old_password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="new_password1" class="form-label">New Password</label>
+                        <input type="password" class="form-control" id="new_password1" name="new_password1" required>
+                        <small class="text-muted">Must be at least 8 characters long</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="new_password2" class="form-label">Confirm New Password</label>
+                        <input type="password" class="form-control" id="new_password2" name="new_password2" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-key"></i> Change Password
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Profile form validation
+    const profileForm = document.getElementById('profileForm');
+    profileForm.addEventListener('submit', function(e) {
+        const firstName = document.getElementById('first_name').value.trim();
+        const lastName = document.getElementById('last_name').value.trim();
+        const username = document.getElementById('username').value.trim();
+        const phoneNumber = document.getElementById('phone_number').value.trim();
+        
+        if (!firstName || !lastName || !username || !phoneNumber) {
+            e.preventDefault();
+            alert('Please fill in all required fields');
+            return;
+        }
+        
+        // Phone number validation
+        const phoneRegex = /^[\d\-\+\(\)\s]+$/;
+        if (!phoneRegex.test(phoneNumber)) {
+            e.preventDefault();
+            alert('Please enter a valid phone number');
+            return;
+        }
+    });
+    
+    // Password form validation
+    const passwordForm = document.getElementById('passwordForm');
+    passwordForm.addEventListener('submit', function(e) {
+        const newPassword1 = document.getElementById('new_password1').value;
+        const newPassword2 = document.getElementById('new_password2').value;
+        
+        if (newPassword1 !== newPassword2) {
+            e.preventDefault();
+            alert('New passwords do not match');
+            return;
+        }
+        
+        if (newPassword1.length < 8) {
+            e.preventDefault();
+            alert('New password must be at least 8 characters long');
+            return;
+        }
+    });
+});
+
+// Auto-save draft functionality
+let draftSaveTimeout;
+document.getElementById('profileForm').addEventListener('input', function() {
+    clearTimeout(draftSaveTimeout);
+    draftSaveTimeout = setTimeout(function() {
+        // Save draft to localStorage
+        const formData = new FormData(document.getElementById('profileForm'));
+        const draft = {};
+        for (let [key, value] of formData.entries()) {
+            draft[key] = value;
+        }
+        localStorage.setItem('profile_draft', JSON.stringify(draft));
+        
+        // Show draft saved indicator
+        const indicator = document.createElement('small');
+        indicator.className = 'text-muted float-end';
+        indicator.innerHTML = '<i class="bi bi-check"></i> Draft saved';
+        
+        const existingIndicator = document.querySelector('.draft-indicator');
+        if (existingIndicator) {
+            existingIndicator.remove();
+        }
+        
+        indicator.classList.add('draft-indicator');
+        document.querySelector('h2').appendChild(indicator);
+        
+        setTimeout(() => indicator.remove(), 3000);
+    }, 2000);
+});
+
+// Load draft on page load
+window.addEventListener('load', function() {
+    const savedDraft = localStorage.getItem('profile_draft');
+    if (savedDraft) {
+        const draft = JSON.parse(savedDraft);
+        Object.keys(draft).forEach(key => {
+            const element = document.getElementById(key);
+            if (element && element.type === 'checkbox') {
+                element.checked = draft[key] === 'on';
+            } else if (element) {
+                element.value = draft[key];
+            }
+        });
+    }
+});
+
+// Clear draft on successful save
+document.getElementById('profileForm').addEventListener('submit', function() {
+    localStorage.removeItem('profile_draft');
+});
+</script>
+{% endblock %}

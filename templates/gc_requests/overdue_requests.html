@@ -1,0 +1,493 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Overdue Requests - Garbage Collection System{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="text-danger">
+                        <i class="bi bi-exclamation-triangle"></i> Overdue Requests
+                    </h2>
+                    <p class="text-muted mb-0">
+                        Requests that have exceeded the 72-hour completion deadline
+                    </p>
+                </div>
+                <div class="btn-group">
+                    <a href="{% url 'gc_requests:analytics' %}" class="btn btn-outline-primary">
+                        <i class="bi bi-graph-up"></i> Analytics
+                    </a>
+                    <a href="{% url 'gc_requests:chairman_dashboard' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-house"></i> Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if requests %}
+        <!-- Summary Stats -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card bg-danger text-white">
+                    <div class="card-body text-center">
+                        <h3 class="mb-1">{{ requests|length }}</h3>
+                        <p class="mb-0">Overdue Request{{ requests|length|pluralize }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-warning text-white">
+                    <div class="card-body text-center">
+                        <h3 class="mb-1">
+                            {{ requests|length|floatformat:0 }}
+                        </h3>
+                        <p class="mb-0">Immediate Action Required</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-info text-white">
+                    <div class="card-body text-center">
+                        <h3 class="mb-1">
+                            {% regroup requests by ward_number as ward_groups %}
+                            {{ ward_groups|length }}
+                        </h3>
+                        <p class="mb-0">Ward{{ ward_groups|length|pluralize }} Affected</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="get" class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Ward</label>
+                        <select name="ward" class="form-select">
+                            <option value="">All Wards</option>
+                            {% for i in "123456789012345678901234567890"|slice:":20" %}
+                                <option value="{{ forloop.counter }}" {% if request.GET.ward == forloop.counter|stringformat:"s" %}selected{% endif %}>
+                                    Ward {{ forloop.counter }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Category</label>
+                        <select name="category" class="form-select">
+                            <option value="">All Categories</option>
+                            <option value="household" {% if request.GET.category == "household" %}selected{% endif %}>Household Waste</option>
+                            <option value="construction" {% if request.GET.category == "construction" %}selected{% endif %}>Construction Debris</option>
+                            <option value="electronic" {% if request.GET.category == "electronic" %}selected{% endif %}>Electronic Waste</option>
+                            <option value="medical" {% if request.GET.category == "medical" %}selected{% endif %}>Medical Waste</option>
+                            <option value="bulk" {% if request.GET.category == "bulk" %}selected{% endif %}>Bulk Items</option>
+                            <option value="other" {% if request.GET.category == "other" %}selected{% endif %}>Other</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Overdue Period</label>
+                        <select name="overdue_period" class="form-select">
+                            <option value="">All Periods</option>
+                            <option value="1" {% if request.GET.overdue_period == "1" %}selected{% endif %}>1-7 hours</option>
+                            <option value="7" {% if request.GET.overdue_period == "7" %}selected{% endif %}>7-24 hours</option>
+                            <option value="24" {% if request.GET.overdue_period == "24" %}selected{% endif %}>1-3 days</option>
+                            <option value="72" {% if request.GET.overdue_period == "72" %}selected{% endif %}>3+ days</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary me-2">
+                            <i class="bi bi-funnel"></i> Filter
+                        </button>
+                        <a href="{% url 'gc_requests:overdue_requests' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Clear
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Overdue Requests List -->
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Request ID</th>
+                                <th>User & Location</th>
+                                <th>Category</th>
+                                <th>Assigned To</th>
+                                <th>Overdue By</th>
+                                <th>Priority</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for request in requests %}
+                            <tr class="{% cycle 'table-light' '' %}">
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <span class="badge bg-danger me-2">
+                                            <i class="bi bi-exclamation-triangle"></i>
+                                        </span>
+                                        <div>
+                                            <strong>#{{ request.id }}</strong>
+                                            <br><small class="text-muted">
+                                                {{ request.created_at|date:'M d, H:i' }}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div>
+                                        <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>
+                                        <br>
+                                        <span class="badge bg-info">Ward {{ request.ward_number }}</span>
+                                        <br>
+                                        <small class="text-muted">{{ request.address|truncatechars:30 }}</small>
+                                        {% if request.landmark %}
+                                            <br><small class="text-muted"><i class="bi bi-geo-alt"></i> {{ request.landmark|truncatechars:20 }}</small>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">
+                                        {{ request.get_category_display }}
+                                    </span>
+                                    {% if request.description %}
+                                        <br><small class="text-muted mt-1 d-block">
+                                            {{ request.description|truncatechars:40 }}
+                                        </small>
+                                    {% endif %}
+                                    {% if request.garbage_image %}
+                                        <br>
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-primary mt-1"
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#imageModal{{ request.id }}">
+                                            <i class="bi bi-image"></i> View Image
+                                        </button>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if request.assigned_labour %}
+                                        <div class="d-flex align-items-center">
+                                            <i class="bi bi-person-circle text-primary me-2"></i>
+                                            <div>
+                                                <strong>{{ request.assigned_labour.get_full_name|default:request.assigned_labour.username }}</strong>
+                                                <br>
+                                                <span class="badge status-{{ request.status }}">
+                                                    {{ request.get_status_display }}
+                                                </span>
+                                                {% if request.assigned_at %}
+                                                    <br><small class="text-muted">
+                                                        Assigned {{ request.assigned_at|timesince }} ago
+                                                    </small>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    {% else %}
+                                        <span class="text-danger">
+                                            <i class="bi bi-person-x"></i> Not Assigned
+                                        </span>
+                                        <br>
+                                        <button class="btn btn-sm btn-warning mt-1" 
+                                                onclick="assignLabour({{ request.id }})">
+                                            <i class="bi bi-person-plus"></i> Assign Now
+                                        </button>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% with overdue_hours=request.hours_overdue %}
+                                        {% if overdue_hours < 24 %}
+                                            <span class="badge bg-warning">
+                                                {{ overdue_hours }} hour{{ overdue_hours|pluralize }}
+                                            </span>
+                                            <br><small class="text-muted">Moderate priority</small>
+                                        {% elif overdue_hours < 72 %}
+                                            <span class="badge bg-danger">
+                                                {{ overdue_hours|floatformat:0 }} hour{{ overdue_hours|pluralize }}
+                                            </span>
+                                            <br><small class="text-danger">High priority</small>
+                                        {% else %}
+                                            <span class="badge bg-dark">
+                                                {{ overdue_hours|floatformat:0 }} hour{{ overdue_hours|pluralize }}
+                                            </span>
+                                            <br><small class="text-dark"><strong>Critical priority</strong></small>
+                                        {% endif %}
+                                    {% endwith %}
+                                </td>
+                                <td>
+                                    {% with overdue_hours=request.hours_overdue %}
+                                        {% if overdue_hours >= 72 %}
+                                            <span class="badge bg-danger fs-6">
+                                                <i class="bi bi-exclamation-triangle"></i> CRITICAL
+                                            </span>
+                                        {% elif overdue_hours >= 24 %}
+                                            <span class="badge bg-warning fs-6">
+                                                <i class="bi bi-clock"></i> HIGH
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-info fs-6">
+                                                <i class="bi bi-info-circle"></i> MEDIUM
+                                            </span>
+                                        {% endif %}
+                                    {% endwith %}
+                                </td>
+                                <td>
+                                    <div class="btn-group-vertical btn-group-sm">
+                                        <a href="{% url 'gc_requests:request_detail' request.id %}" 
+                                           class="btn btn-outline-primary">
+                                            <i class="bi bi-eye"></i> Details
+                                        </a>
+                                        <a href="{% url 'gc_requests:track_request' request.id %}" 
+                                           class="btn btn-outline-info">
+                                            <i class="bi bi-geo-alt"></i> Track
+                                        </a>
+                                        {% if not request.assigned_labour %}
+                                            <button class="btn btn-outline-warning" 
+                                                    onclick="assignLabour({{ request.id }})">
+                                                <i class="bi bi-person-plus"></i> Assign
+                                            </button>
+                                        {% else %}
+                                            <button class="btn btn-outline-secondary" 
+                                                    onclick="escalateRequest({{ request.id }})">
+                                                <i class="bi bi-arrow-up-circle"></i> Escalate
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+
+                            <!-- Image Modal -->
+                            {% if request.garbage_image %}
+                            <div class="modal fade" id="imageModal{{ request.id }}" tabindex="-1">
+                                <div class="modal-dialog modal-lg">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Request #{{ request.id }} - Garbage Image</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body text-center">
+                                            <img src="{{ request.garbage_image.url }}" 
+                                                 class="img-fluid mb-3" 
+                                                 alt="Garbage Image">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <p><strong>Category:</strong> {{ request.get_category_display }}</p>
+                                                    <p><strong>Ward:</strong> {{ request.ward_number }}</p>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <p><strong>Address:</strong> {{ request.address }}</p>
+                                                    <p><strong>Landmark:</strong> {{ request.landmark|default:"Not specified" }}</p>
+                                                </div>
+                                            </div>
+                                            {% if request.description %}
+                                                <div class="alert alert-info">
+                                                    <strong>Description:</strong> {{ request.description }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <nav aria-label="Overdue requests pagination" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">
+                            <i class="bi bi-chevron-left"></i> Previous
+                        </a>
+                    </li>
+                {% endif %}
+                
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}">
+                            Next <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+    {% else %}
+        <!-- No Overdue Requests -->
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-check-circle text-success" style="font-size: 4rem;"></i>
+                <h3 class="mt-3 text-success">Excellent Work!</h3>
+                <p class="text-muted mb-4">
+                    No requests are currently overdue. All requests are being handled within the 72-hour deadline.
+                </p>
+                <div class="row justify-content-center">
+                    <div class="col-md-8">
+                        <div class="alert alert-success">
+                            <i class="bi bi-trophy me-2"></i>
+                            <strong>System Performance:</strong> All garbage collection requests are being processed efficiently. 
+                            The labour force and councilors are maintaining excellent response times.
+                        </div>
+                    </div>
+                </div>
+                <div class="btn-group mt-3">
+                    <a href="{% url 'gc_requests:analytics' %}" class="btn btn-primary">
+                        <i class="bi bi-graph-up"></i> View Analytics
+                    </a>
+                    <a href="{% url 'gc_requests:chairman_dashboard' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-house"></i> Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Action Modals -->
+<div class="modal fade" id="assignLabourModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Assign Labour Worker</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="assignLabourForm">
+                    <input type="hidden" id="requestId" name="request_id">
+                    <div class="mb-3">
+                        <label class="form-label">Select Labour Worker</label>
+                        <select class="form-select" id="labourSelect" name="labour_id" required>
+                            <option value="">Choose labour worker...</option>
+                            <!-- Options will be populated by JavaScript -->
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Priority Notes</label>
+                        <textarea class="form-control" id="priorityNotes" name="notes" rows="3" 
+                                  placeholder="Add any special instructions or priority notes..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitLabourAssignment()">
+                    <i class="bi bi-person-plus"></i> Assign Labour
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function assignLabour(requestId) {
+    document.getElementById('requestId').value = requestId;
+    
+    // Load available labour workers
+    fetch('/api/available-labour/')
+        .then(response => response.json())
+        .then(data => {
+            const select = document.getElementById('labourSelect');
+            select.innerHTML = '<option value="">Choose labour worker...</option>';
+            
+            data.labour_workers.forEach(worker => {
+                const option = document.createElement('option');
+                option.value = worker.id;
+                option.textContent = `${worker.name} (${worker.active_requests} active requests)`;
+                select.appendChild(option);
+            });
+        });
+    
+    new bootstrap.Modal(document.getElementById('assignLabourModal')).show();
+}
+
+function submitLabourAssignment() {
+    const form = document.getElementById('assignLabourForm');
+    const formData = new FormData(form);
+    
+    fetch('/api/assign-labour/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error assigning labour: ' + data.error);
+        }
+    });
+}
+
+function escalateRequest(requestId) {
+    if (confirm('This will send an urgent notification to all relevant parties. Continue?')) {
+        fetch(`/api/escalate-request/${requestId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Request escalated successfully. Notifications sent.');
+            } else {
+                alert('Error escalating request: ' + data.error);
+            }
+        });
+    }
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Auto refresh every 2 minutes for real-time updates
+setInterval(function() {
+    location.reload();
+}, 120000);
+</script>
+{% endblock %}

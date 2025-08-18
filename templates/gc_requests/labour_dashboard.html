@@ -1,0 +1,237 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Labour Dashboard - Garbage Collection System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Welcome Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="bg-success text-white p-4 rounded">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h2 class="mb-2">
+                            <i class="bi bi-person-gear"></i> 
+                            Labour Dashboard
+                        </h2>
+                        <p class="mb-0">
+                            Manage your assigned garbage collection tasks and track completion.
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <a href="{% url 'gc_requests:labour_requests' %}" class="btn btn-light btn-lg">
+                            <i class="bi bi-list-check"></i> View All Tasks
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Task Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card dashboard-card text-center">
+                <div class="card-body">
+                    <div class="dashboard-stat text-warning">{{ assigned_requests }}</div>
+                    <h6 class="card-title">Assigned</h6>
+                    <p class="text-muted mb-0">Ready to start</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card dashboard-card text-center">
+                <div class="card-body">
+                    <div class="dashboard-stat text-primary">{{ in_progress_requests }}</div>
+                    <h6 class="card-title">In Progress</h6>
+                    <p class="text-muted mb-0">Currently working</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card dashboard-card text-center">
+                <div class="card-body">
+                    <div class="dashboard-stat text-success">{{ completed_requests }}</div>
+                    <h6 class="card-title">Completed</h6>
+                    <p class="text-muted mb-0">Successfully done</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card dashboard-card text-center">
+                <div class="card-body">
+                    <div class="dashboard-stat text-danger">{{ overdue_requests|length }}</div>
+                    <h6 class="card-title">Overdue</h6>
+                    <p class="text-muted mb-0">Need attention</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overdue Alerts -->
+    {% if overdue_requests %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-danger border-0 shadow-sm">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-exclamation-triangle-fill me-3" style="font-size: 2rem;"></i>
+                    <div class="flex-grow-1">
+                        <h5 class="alert-heading mb-2">
+                            <strong>{{ overdue_requests|length }}</strong> Overdue Task{{ overdue_requests|length|pluralize }}
+                        </h5>
+                        <p class="mb-2">
+                            You have tasks that have exceeded the 72-hour completion deadline. Please complete them immediately.
+                        </p>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for request in overdue_requests %}
+                                <a href="{% url 'gc_requests:labour_request_detail' request.id %}" 
+                                   class="btn btn-sm btn-outline-light">
+                                    Request #{{ request.id }}
+                                </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-lightning-charge"></i> Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <a href="{% url 'gc_requests:labour_requests' %}" class="btn btn-outline-primary w-100 py-3">
+                                <i class="bi bi-list-check d-block mb-2" style="font-size: 2rem;"></i>
+                                My Tasks
+                            </a>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <a href="{% url 'accounts:profile' %}" class="btn btn-outline-info w-100 py-3">
+                                <i class="bi bi-person-circle d-block mb-2" style="font-size: 2rem;"></i>
+                                My Profile
+                            </a>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <a href="{% url 'notifications:list' %}" class="btn btn-outline-warning w-100 py-3">
+                                <i class="bi bi-bell d-block mb-2" style="font-size: 2rem;"></i>
+                                Notifications
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Tasks -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-clock-history"></i> Recent Tasks
+                    </h5>
+                    <a href="{% url 'gc_requests:labour_requests' %}" class="btn btn-sm btn-outline-primary">
+                        View All Tasks
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if recent_requests %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Category</th>
+                                        <th>Ward</th>
+                                        <th>Status</th>
+                                        <th>Assigned</th>
+                                        <th>Time Remaining</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for request in recent_requests %}
+                                    <tr class="{% if request.is_overdue %}table-warning{% endif %}">
+                                        <td><strong>#{{ request.id }}</strong></td>
+                                        <td>
+                                            <span class="badge bg-secondary">
+                                                {{ request.get_category_display }}
+                                            </span>
+                                        </td>
+                                        <td>Ward {{ request.ward_number }}</td>
+                                        <td>
+                                            <span class="badge status-{{ request.status }}">
+                                                {{ request.get_status_display }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <small data-timestamp="{{ request.assigned_at|date:'c' }}">
+                                                {{ request.assigned_at|date:'M d, Y H:i' }}
+                                            </small>
+                                        </td>
+                                        <td>
+                                            {% if request.time_remaining %}
+                                                <span class="{% if request.is_overdue %}text-danger{% else %}text-success{% endif %}">
+                                                    {{ request.time_remaining }}
+                                                </span>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <a href="{% url 'gc_requests:labour_request_detail' request.id %}" 
+                                                   class="btn btn-outline-primary">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                                {% if request.status == 'assigned' %}
+                                                    <a href="{% url 'gc_requests:start_work' request.id %}" 
+                                                       class="btn btn-outline-success">
+                                                        <i class="bi bi-play"></i>
+                                                    </a>
+                                                {% elif request.status == 'in_progress' %}
+                                                    <a href="{% url 'gc_requests:complete_work' request.id %}" 
+                                                       class="btn btn-outline-warning">
+                                                        <i class="bi bi-check"></i>
+                                                    </a>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-clipboard-check" style="font-size: 3rem; opacity: 0.3;"></i>
+                            <h5 class="mt-3 text-muted">No tasks assigned yet</h5>
+                            <p class="text-muted">
+                                Your assigned tasks will appear here once a councilor assigns them to you.
+                            </p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-refresh time remaining every minute
+setInterval(function() {
+    location.reload();
+}, 60000);
+</script>
+{% endblock %}

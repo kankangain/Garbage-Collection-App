@@ -1,0 +1,302 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Chairman Dashboard - Garbage Collection System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Welcome Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="bg-success text-white p-4 rounded">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h2 class="mb-2">
+                            <i class="bi bi-person-badge"></i> 
+                            Chairman Dashboard
+                        </h2>
+                        <p class="mb-0">
+                            System-wide overview of all garbage collection requests across all wards.
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <a href="{% url 'gc_requests:analytics' %}" class="btn btn-light btn-lg">
+                            <i class="bi bi-graph-up"></i> View Analytics
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card dashboard-card text-center">
+                <div class="card-body">
+                    <div class="dashboard-stat">{{ total_requests }}</div>
+                    <h6 class="card-title">Total Requests</h6>
+                    <p class="text-muted mb-0">All time</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card dashboard-card text-center">
+                <div class="card-body">
+                    <div class="dashboard-stat text-warning">{{ pending_requests }}</div>
+                    <h6 class="card-title">Pending</h6>
+                    <p class="text-muted mb-0">Awaiting assignment</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card dashboard-card text-center">
+                <div class="card-body">
+                    <div class="dashboard-stat text-primary">{{ in_progress_requests }}</div>
+                    <h6 class="card-title">In Progress</h6>
+                    <p class="text-muted mb-0">Being worked on</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card dashboard-card text-center">
+                <div class="card-body">
+                    <div class="dashboard-stat text-success">{{ completed_requests }}</div>
+                    <h6 class="card-title">Completed</h6>
+                    <p class="text-muted mb-0">Successfully done</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overdue Alerts -->
+    {% if overdue_requests > 0 %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-warning border-0 shadow-sm">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-exclamation-triangle-fill me-3" style="font-size: 2rem;"></i>
+                    <div class="flex-grow-1">
+                        <h5 class="alert-heading mb-2">
+                            <strong>{{ overdue_requests }}</strong> Overdue Request{{ overdue_requests|pluralize }}
+                        </h5>
+                        <p class="mb-2">
+                            Some requests have exceeded the 72-hour completion deadline and require immediate attention.
+                        </p>
+                        <a href="{% url 'gc_requests:overdue_requests' %}" class="btn btn-warning">
+                            <i class="bi bi-eye"></i> View Overdue Requests
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-lightning-charge"></i> Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'gc_requests:chairman_requests' %}" class="btn btn-outline-primary w-100 py-3">
+                                <i class="bi bi-list-ul d-block mb-2" style="font-size: 2rem;"></i>
+                                All Requests
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'gc_requests:overdue_requests' %}" class="btn btn-outline-warning w-100 py-3">
+                                <i class="bi bi-clock-history d-block mb-2" style="font-size: 2rem;"></i>
+                                Overdue Requests
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'gc_requests:analytics' %}" class="btn btn-outline-success w-100 py-3">
+                                <i class="bi bi-graph-up d-block mb-2" style="font-size: 2rem;"></i>
+                                Analytics
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <a href="{% url 'accounts:user_management' %}" class="btn btn-outline-info w-100 py-3">
+                                <i class="bi bi-people d-block mb-2" style="font-size: 2rem;"></i>
+                                User Management
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ward Statistics -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-geo-alt"></i> Ward-wise Statistics
+                    </h5>
+                    <span class="badge bg-primary">20 Wards</span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for ward, stats in ward_stats.items %}
+                        <div class="col-lg-3 col-md-4 col-sm-6 mb-3">
+                            <div class="card border-0 bg-light">
+                                <div class="card-body p-3">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <h6 class="card-title mb-0">Ward {{ ward }}</h6>
+                                        <span class="badge bg-secondary">{{ stats.total }}</span>
+                                    </div>
+                                    <div class="row text-center">
+                                        <div class="col-3">
+                                            <small class="text-warning">{{ stats.pending }}</small>
+                                            <br><small class="text-muted">Pending</small>
+                                        </div>
+                                        <div class="col-3">
+                                            <small class="text-primary">{{ stats.in_progress }}</small>
+                                            <br><small class="text-muted">Progress</small>
+                                        </div>
+                                        <div class="col-3">
+                                            <small class="text-success">{{ stats.completed }}</small>
+                                            <br><small class="text-muted">Done</small>
+                                        </div>
+                                        <div class="col-3">
+                                            {% if stats.overdue > 0 %}
+                                                <small class="text-danger">{{ stats.overdue }}</small>
+                                                <br><small class="text-muted">Overdue</small>
+                                            {% else %}
+                                                <small class="text-muted">0</small>
+                                                <br><small class="text-muted">Overdue</small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="mt-2">
+                                        <a href="{% url 'gc_requests:chairman_requests' %}?ward={{ ward }}" 
+                                           class="btn btn-sm btn-outline-primary w-100">
+                                            View Ward Details
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Requests -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-clock-history"></i> Recent Requests
+                    </h5>
+                    <a href="{% url 'gc_requests:chairman_requests' %}" class="btn btn-sm btn-outline-primary">
+                        View All Requests
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if recent_requests %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Requester</th>
+                                        <th>Category</th>
+                                        <th>Ward</th>
+                                        <th>Status</th>
+                                        <th>Date</th>
+                                        <th>Assigned Labour</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for request in recent_requests %}
+                                    <tr>
+                                        <td><strong>#{{ request.id }}</strong></td>
+                                        <td>{{ request.requester_full_name }}</td>
+                                        <td>
+                                            <span class="badge bg-secondary">
+                                                {{ request.get_category_display }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">Ward {{ request.ward_number }}</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge status-{{ request.status }}">
+                                                {{ request.get_status_display }}
+                                            </span>
+                                            {% if request.is_overdue %}
+                                                <br><small class="text-danger">
+                                                    <i class="bi bi-exclamation-triangle"></i> Overdue
+                                                </small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <small data-timestamp="{{ request.created_at|date:'c' }}">
+                                                {{ request.created_at|date:'M d, Y' }}
+                                            </small>
+                                            {% if request.assigned_at %}
+                                                <br><small class="text-muted">
+                                                    Assigned: {{ request.assigned_at|date:'M d' }}
+                                                </small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if request.assigned_labour %}
+                                                <small>{{ request.assigned_labour.username }}</small>
+                                            {% else %}
+                                                <span class="text-muted">Not assigned</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm">
+                                                <a href="{% url 'gc_requests:request_detail' request.id %}" 
+                                                   class="btn btn-outline-primary">
+                                                    <i class="bi bi-eye"></i>
+                                                </a>
+                                                <a href="{% url 'gc_requests:track_request' request.id %}" 
+                                                   class="btn btn-outline-info">
+                                                    <i class="bi bi-geo-alt"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.3;"></i>
+                            <h5 class="mt-3 text-muted">No requests yet</h5>
+                            <p class="text-muted">
+                                Requests will appear here once users start submitting them.
+                            </p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-refresh overdue alerts every 5 minutes
+setInterval(function() {
+    // You can implement AJAX refresh here if needed
+}, 300000);
+</script>
+{% endblock %}

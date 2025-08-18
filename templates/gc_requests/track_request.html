@@ -1,0 +1,484 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Track Request - Garbage Collection System{% endblock %}
+
+{% block extra_head %}
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    #map {
+        height: 400px;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .tracking-info {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .status-indicator {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 10px;
+        animation: pulse 2s infinite;
+    }
+    
+    .status-pending { background-color: #ffc107; }
+    .status-assigned { background-color: #007bff; }
+    .status-in-progress { background-color: #17a2b8; }
+    .status-completed { background-color: #28a745; }
+    .status-approved { background-color: #28a745; }
+    .status-rejected { background-color: #dc3545; }
+    
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.6; }
+        100% { opacity: 1; }
+    }
+    
+    .location-card {
+        border: 2px solid #e9ecef;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 20px;
+        transition: all 0.3s ease;
+    }
+    
+    .location-card:hover {
+        border-color: #007bff;
+        box-shadow: 0 4px 15px rgba(0,123,255,0.1);
+    }
+    
+    .refresh-btn {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: #007bff;
+        color: white;
+        border: none;
+        box-shadow: 0 4px 15px rgba(0,123,255,0.3);
+        animation: float 3s ease-in-out infinite;
+    }
+    
+    @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2>
+                        <i class="bi bi-geo-alt"></i> Track Request #{{ request.id }}
+                    </h2>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item">
+                                <a href="{% url 'gc_requests:request_detail' request.id %}">Request Details</a>
+                            </li>
+                            <li class="breadcrumb-item active">Track Location</li>
+                        </ol>
+                    </nav>
+                </div>
+                <div class="btn-group">
+                    <a href="{% url 'gc_requests:request_detail' request.id %}" class="btn btn-outline-primary">
+                        <i class="bi bi-arrow-left"></i> Back to Details
+                    </a>
+                    <button class="btn btn-outline-success" onclick="shareLocation()">
+                        <i class="bi bi-share"></i> Share Location
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Current Status -->
+    <div class="tracking-info">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <div class="d-flex align-items-center mb-2">
+                    <span class="status-indicator status-{{ request.status }}"></span>
+                    <h5 class="mb-0">{{ request.get_status_display }}</h5>
+                </div>
+                <p class="text-muted mb-0">
+                    {% if request.status == 'pending' %}
+                        Your request has been received and is waiting for assignment to a labour worker.
+                    {% elif request.status == 'assigned' %}
+                        A labour worker has been assigned to your request and will arrive soon.
+                    {% elif request.status == 'in_progress' %}
+                        Work is currently in progress at your location.
+                    {% elif request.status == 'completed' %}
+                        Work has been completed and is awaiting councilor approval.
+                    {% elif request.status == 'approved' %}
+                        Your request has been successfully completed and approved.
+                    {% elif request.status == 'rejected' %}
+                        The work quality needs improvement. Work will be rescheduled.
+                    {% endif %}
+                </p>
+            </div>
+            <div class="col-md-6 text-end">
+                {% if request.assigned_labour %}
+                    <div class="d-flex align-items-center justify-content-end">
+                        <div class="text-end me-3">
+                            <h6 class="mb-0">{{ request.assigned_labour.get_full_name|default:request.assigned_labour.username }}</h6>
+                            <small class="text-muted">Assigned Labour</small>
+                        </div>
+                        <i class="bi bi-person-circle text-primary" style="font-size: 2rem;"></i>
+                    </div>
+                {% endif %}
+                
+                {% if request.time_remaining %}
+                    <div class="mt-2">
+                        <span class="badge {% if request.is_overdue %}bg-danger{% else %}bg-info{% endif %} fs-6">
+                            {% if request.is_overdue %}
+                                <i class="bi bi-exclamation-triangle"></i> Overdue by {{ request.time_remaining }}
+                            {% else %}
+                                <i class="bi bi-clock"></i> {{ request.time_remaining }} remaining
+                            {% endif %}
+                        </span>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Map Section -->
+        <div class="col-lg-8 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">
+                            <i class="bi bi-map"></i> Location Map
+                        </h6>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" onclick="centerMap()">
+                                <i class="bi bi-geo-alt"></i> Center
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="toggleSatellite()">
+                                <i class="bi bi-globe"></i> Satellite
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div id="map"></div>
+                </div>
+                <div class="card-footer">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <i class="bi bi-geo-alt text-danger"></i>
+                            <br><small>Request Location</small>
+                        </div>
+                        {% if request.assigned_labour %}
+                        <div class="col-4">
+                            <i class="bi bi-person-circle text-primary"></i>
+                            <br><small>Labour Worker</small>
+                        </div>
+                        {% endif %}
+                        <div class="col-4">
+                            <i class="bi bi-house text-success"></i>
+                            <br><small>Ward Office</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Location Details -->
+        <div class="col-lg-4 mb-4">
+            <div class="location-card">
+                <h6 class="text-muted mb-3">
+                    <i class="bi bi-pin-map"></i> Location Details
+                </h6>
+                <div class="mb-3">
+                    <strong>Address:</strong>
+                    <p class="mb-1">{{ request.address }}</p>
+                    {% if request.landmark %}
+                        <small class="text-muted">
+                            <i class="bi bi-geo-alt"></i> Near {{ request.landmark }}
+                        </small>
+                    {% endif %}
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Ward:</strong>
+                    <span class="badge bg-info ms-2">Ward {{ request.ward_number }}</span>
+                </div>
+                
+                {% if request.latitude and request.longitude %}
+                <div class="mb-3">
+                    <strong>Coordinates:</strong>
+                    <br>
+                    <code>{{ request.latitude|floatformat:6 }}, {{ request.longitude|floatformat:6 }}</code>
+                    <br>
+                    <a href="https://maps.google.com?q={{ request.latitude }},{{ request.longitude }}" 
+                       target="_blank" class="btn btn-sm btn-outline-primary mt-2">
+                        <i class="bi bi-box-arrow-up-right"></i> Open in Google Maps
+                    </a>
+                </div>
+                {% endif %}
+
+                <div class="mb-3">
+                    <strong>Category:</strong>
+                    <br>
+                    <span class="badge bg-secondary">{{ request.get_category_display }}</span>
+                </div>
+
+                {% if request.description %}
+                <div>
+                    <strong>Description:</strong>
+                    <p class="text-muted small">{{ request.description }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Progress Steps -->
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-list-check"></i> Progress Tracking
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="progress-steps">
+                        <div class="step {% if request.created_at %}completed{% endif %}">
+                            <div class="step-icon">
+                                <i class="bi bi-plus-circle"></i>
+                            </div>
+                            <div class="step-content">
+                                <h6>Request Submitted</h6>
+                                <small class="text-muted">{{ request.created_at|date:'M d, H:i' }}</small>
+                            </div>
+                        </div>
+
+                        <div class="step {% if request.assigned_at %}completed{% elif request.status == 'pending' %}active{% endif %}">
+                            <div class="step-icon">
+                                <i class="bi bi-person-plus"></i>
+                            </div>
+                            <div class="step-content">
+                                <h6>Labour Assigned</h6>
+                                {% if request.assigned_at %}
+                                    <small class="text-muted">{{ request.assigned_at|date:'M d, H:i' }}</small>
+                                {% else %}
+                                    <small class="text-muted">Pending assignment</small>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="step {% if request.status == 'in_progress' or request.completed_at %}active{% endif %} {% if request.completed_at %}completed{% endif %}">
+                            <div class="step-icon">
+                                <i class="bi bi-tools"></i>
+                            </div>
+                            <div class="step-content">
+                                <h6>Work In Progress</h6>
+                                <small class="text-muted">
+                                    {% if request.status == 'in_progress' %}
+                                        Currently working...
+                                    {% elif request.completed_at %}
+                                        Work completed
+                                    {% else %}
+                                        Not started
+                                    {% endif %}
+                                </small>
+                            </div>
+                        </div>
+
+                        <div class="step {% if request.completed_at %}active{% endif %} {% if request.approved_at %}completed{% endif %}">
+                            <div class="step-icon">
+                                <i class="bi bi-check-circle"></i>
+                            </div>
+                            <div class="step-content">
+                                <h6>Quality Check</h6>
+                                {% if request.approved_at %}
+                                    <small class="text-muted">{{ request.approved_at|date:'M d, H:i' }}</small>
+                                {% elif request.completed_at %}
+                                    <small class="text-muted">Under review</small>
+                                {% else %}
+                                    <small class="text-muted">Pending completion</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Real-time Updates -->
+    <div class="row">
+        <div class="col">
+            <div class="card border-info">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-info-circle text-info me-3" style="font-size: 1.5rem;"></i>
+                        <div>
+                            <h6 class="mb-0">Live Tracking</h6>
+                            <p class="text-muted mb-0 small">
+                                This page automatically updates every 30 seconds to show the latest status.
+                                {% if request.assigned_labour %}
+                                You can also contact the assigned labour worker if needed.
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="ms-auto">
+                            <span class="badge bg-success">
+                                <i class="bi bi-circle-fill" id="liveIndicator"></i> Live
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Floating Refresh Button -->
+<button class="refresh-btn" onclick="refreshStatus()" title="Refresh Status">
+    <i class="bi bi-arrow-clockwise"></i>
+</button>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Leaflet JavaScript -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+let map;
+let requestMarker;
+let labourMarker;
+
+function initMap() {
+    // Default location (request location or city center)
+    const requestLat = {{ request.latitude|default:"17.3850" }};
+    const requestLng = {{ request.longitude|default:"78.4867" }};
+    
+    // Initialize map
+    map = L.map('map').setView([requestLat, requestLng], 15);
+    
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    // Add request location marker
+    requestMarker = L.marker([requestLat, requestLng])
+        .addTo(map)
+        .bindPopup(`
+            <div class="p-2">
+                <h6>Request #{{ request.id }}</h6>
+                <p class="mb-1"><strong>Category:</strong> {{ request.get_category_display }}</p>
+                <p class="mb-1"><strong>Address:</strong> {{ request.address }}</p>
+                <p class="mb-0"><strong>Status:</strong> {{ request.get_status_display }}</p>
+            </div>
+        `);
+
+    {% if request.assigned_labour and request.latitude and request.longitude %}
+    // Simulate labour location (in real app, this would come from GPS)
+    const labourLat = requestLat + 0.001; // Slightly offset for demo
+    const labourLng = requestLng + 0.001;
+    
+    labourMarker = L.marker([labourLat, labourLng])
+        .addTo(map)
+        .bindPopup(`
+            <div class="p-2">
+                <h6>{{ request.assigned_labour.get_full_name|default:request.assigned_labour.username }}</h6>
+                <p class="mb-1"><strong>Labour Worker</strong></p>
+                <p class="mb-0">Currently {{ request.get_status_display|lower }}</p>
+            </div>
+        `);
+    {% endif %}
+}
+
+function centerMap() {
+    if (map && requestMarker) {
+        const requestLat = {{ request.latitude|default:"17.3850" }};
+        const requestLng = {{ request.longitude|default:"78.4867" }};
+        map.setView([requestLat, requestLng], 15);
+    }
+}
+
+function toggleSatellite() {
+    // Toggle between OpenStreetMap and satellite view
+    map.eachLayer(function(layer) {
+        if (layer instanceof L.TileLayer) {
+            map.removeLayer(layer);
+        }
+    });
+    
+    // Check if we're currently on satellite view by checking if satellite layer exists
+    if (window.currentMapType === 'satellite') {
+        // Switch to normal map
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        window.currentMapType = 'roadmap';
+    } else {
+        // Switch to satellite view
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles © Esri'
+        }).addTo(map);
+        window.currentMapType = 'satellite';
+    }
+}
+
+function shareLocation() {
+    if (navigator.share) {
+        navigator.share({
+            title: 'Garbage Collection Request #{{ request.id }}',
+            text: 'Track my garbage collection request',
+            url: window.location.href
+        });
+    } else {
+        // Fallback: copy to clipboard
+        navigator.clipboard.writeText(window.location.href).then(() => {
+            alert('Location link copied to clipboard!');
+        });
+    }
+}
+
+function refreshStatus() {
+    const indicator = document.getElementById('liveIndicator');
+    indicator.style.animation = 'none';
+    
+    fetch(`/api/request-status/{{ request.id }}/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status_changed) {
+                location.reload();
+            } else {
+                indicator.style.animation = 'pulse 2s infinite';
+            }
+        })
+        .catch(error => {
+            console.log('Error checking status:', error);
+        });
+}
+
+// Auto-refresh every 30 seconds
+setInterval(refreshStatus, 30000);
+
+// Initialize map when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    window.currentMapType = 'roadmap';
+    initMap();
+});
+</script>
+{% endblock %}

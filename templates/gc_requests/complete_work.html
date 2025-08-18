@@ -1,0 +1,487 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Complete Work - Request #{{ request.id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .photo-preview {
+        max-width: 200px;
+        max-height: 200px;
+        border: 2px dashed #dee2e6;
+        border-radius: 10px;
+        margin: 10px 0;
+    }
+    
+    .photo-upload-zone {
+        border: 2px dashed #007bff;
+        border-radius: 15px;
+        padding: 40px;
+        text-align: center;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .photo-upload-zone:hover {
+        background-color: rgba(0,123,255,0.05);
+        border-color: #0056b3;
+    }
+    
+    .photo-upload-zone.drag-over {
+        background-color: rgba(0,123,255,0.1);
+        border-color: #0056b3;
+        transform: scale(1.02);
+    }
+    
+    .completion-form {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 15px;
+        padding: 30px;
+    }
+    
+    .required-steps {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .step-item {
+        display: flex;
+        align-items-center;
+        padding: 10px 0;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .step-item:last-child {
+        border-bottom: none;
+    }
+    
+    .step-icon {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: #28a745;
+        color: white;
+        display: flex;
+        align-items-center;
+        justify-content-center;
+        margin-right: 15px;
+        font-size: 14px;
+    }
+    
+    .step-icon.pending {
+        background: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2>
+                        <i class="bi bi-check-circle"></i> Complete Work
+                    </h2>
+                    <p class="text-muted mb-0">Request #{{ request.id }} - {{ request.get_category_display }}</p>
+                </div>
+                <div class="btn-group">
+                    <a href="{% url 'gc_requests:labour_request_detail' request.id %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Details
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Completion Form -->
+        <div class="col-lg-8 mb-4">
+            <div class="completion-form">
+                <h5 class="mb-4">
+                    <i class="bi bi-clipboard-check"></i> Work Completion Report
+                </h5>
+
+                <form method="post" enctype="multipart/form-data" id="completionForm">
+                    {% csrf_token %}
+                    
+                    <!-- Completion Photo -->
+                    <div class="mb-4">
+                        <label class="form-label">
+                            <strong>Completion Photo <span class="text-danger">*</span></strong>
+                        </label>
+                        <div class="photo-upload-zone" onclick="document.getElementById('completion_image').click()">
+                            <i class="bi bi-camera" style="font-size: 3rem; color: #007bff;"></i>
+                            <h6 class="mt-3 text-primary">Take Completion Photo</h6>
+                            <p class="text-muted mb-0">
+                                Tap here to capture or select an image showing the cleaned area
+                            </p>
+                            <input type="file" 
+                                   id="completion_image" 
+                                   name="completion_image" 
+                                   accept="image/*" 
+                                   capture="environment"
+                                   style="display: none;" 
+                                   required>
+                        </div>
+                        <div id="imagePreview" class="mt-3" style="display: none;">
+                            <img id="previewImg" class="photo-preview" alt="Completion photo preview">
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removePhoto()">
+                                    <i class="bi bi-x-circle"></i> Remove Photo
+                                </button>
+                            </div>
+                        </div>
+                        <small class="text-muted">
+                            <i class="bi bi-info-circle"></i> Take a clear photo showing the area after cleaning
+                        </small>
+                    </div>
+
+                    <!-- Work Notes -->
+                    <div class="mb-4">
+                        <label for="notes" class="form-label">
+                            <strong>Work Summary & Notes</strong>
+                        </label>
+                        <textarea class="form-control" 
+                                  id="notes" 
+                                  name="notes" 
+                                  rows="4" 
+                                  placeholder="Describe the work completed, any challenges faced, or additional notes..."></textarea>
+                        <small class="text-muted">
+                            Optional: Provide details about the work completed
+                        </small>
+                    </div>
+
+                    <!-- Work Quality Checklist -->
+                    <div class="mb-4">
+                        <label class="form-label">
+                            <strong>Quality Checklist</strong>
+                        </label>
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="check1" required>
+                                    <label class="form-check-label" for="check1">
+                                        All garbage has been collected from the specified location
+                                    </label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="check2" required>
+                                    <label class="form-check-label" for="check2">
+                                        The area has been cleaned and swept properly
+                                    </label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="check3" required>
+                                    <label class="form-check-label" for="check3">
+                                        Hazardous materials have been handled appropriately
+                                    </label>
+                                </div>
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" id="check4" required>
+                                    <label class="form-check-label" for="check4">
+                                        The completion photo clearly shows the cleaned area
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="check5" required>
+                                    <label class="form-check-label" for="check5">
+                                        Work has been completed to the best of my ability
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="bi bi-check-circle"></i> Submit Completion Report
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Request Summary -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-info-circle"></i> Request Summary
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm table-borderless">
+                        <tr>
+                            <td><strong>Category:</strong></td>
+                            <td>
+                                <span class="badge bg-secondary">{{ request.get_category_display }}</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Location:</strong></td>
+                            <td>Ward {{ request.ward_number }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Address:</strong></td>
+                            <td>{{ request.address|truncatechars:30 }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Requester:</strong></td>
+                            <td>{{ request.user.get_full_name|default:request.user.username }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Assigned:</strong></td>
+                            <td>{{ request.assigned_at|timesince }} ago</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Started:</strong></td>
+                            <td>{{ request.assigned_at|timesince }} ago</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Original Request Photo -->
+            {% if request.garbage_image %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-image"></i> Original Photo
+                    </h6>
+                </div>
+                <div class="card-body text-center">
+                    <img src="{{ request.garbage_image.url }}" 
+                         class="img-fluid rounded mb-2" 
+                         alt="Original garbage image"
+                         style="max-height: 200px; cursor: pointer;"
+                         data-bs-toggle="modal" 
+                         data-bs-target="#originalImageModal">
+                    <br>
+                    <small class="text-muted">Before cleaning</small>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Completion Steps -->
+            <div class="required-steps">
+                <h6 class="mb-3">
+                    <i class="bi bi-list-check"></i> Completion Steps
+                </h6>
+                
+                <div class="step-item">
+                    <div class="step-icon">
+                        <i class="bi bi-check"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-1">Work Started</h6>
+                        <small class="text-muted">{{ request.assigned_at|date:'H:i' }}</small>
+                    </div>
+                </div>
+                
+                <div class="step-item">
+                    <div class="step-icon pending" id="photoIcon">
+                        <i class="bi bi-camera"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-1">Take Completion Photo</h6>
+                        <small class="text-muted">Required for verification</small>
+                    </div>
+                </div>
+                
+                <div class="step-item">
+                    <div class="step-icon pending" id="reportIcon">
+                        <i class="bi bi-file-text"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-1">Submit Report</h6>
+                        <small class="text-muted">Final step</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tips -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-lightbulb"></i> Pro Tips
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <i class="bi bi-check text-success me-2"></i>
+                            Take the photo from same angle as original
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check text-success me-2"></i>
+                            Ensure good lighting for clear photo
+                        </li>
+                        <li class="mb-2">
+                            <i class="bi bi-check text-success me-2"></i>
+                            Include nearby landmarks for reference
+                        </li>
+                        <li class="mb-0">
+                            <i class="bi bi-check text-success me-2"></i>
+                            Add notes about any challenges faced
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Original Image Modal -->
+{% if request.garbage_image %}
+<div class="modal fade" id="originalImageModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Original Request Photo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img src="{{ request.garbage_image.url }}" class="img-fluid" alt="Original garbage image">
+                <div class="mt-3">
+                    <p><strong>Location:</strong> {{ request.address }}</p>
+                    {% if request.description %}
+                        <p><strong>Description:</strong> {{ request.description }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('completion_image');
+    const imagePreview = document.getElementById('imagePreview');
+    const previewImg = document.getElementById('previewImg');
+    const uploadZone = document.querySelector('.photo-upload-zone');
+    
+    // File input change event
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewImg.src = e.target.result;
+                imagePreview.style.display = 'block';
+                uploadZone.style.display = 'none';
+                
+                // Update step icon
+                const photoIcon = document.getElementById('photoIcon');
+                photoIcon.classList.remove('pending');
+                photoIcon.style.backgroundColor = '#28a745';
+                photoIcon.innerHTML = '<i class="bi bi-check"></i>';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+    
+    // Drag and drop functionality
+    uploadZone.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        this.classList.add('drag-over');
+    });
+    
+    uploadZone.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        this.classList.remove('drag-over');
+    });
+    
+    uploadZone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        this.classList.remove('drag-over');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            fileInput.files = files;
+            fileInput.dispatchEvent(new Event('change'));
+        }
+    });
+    
+    // Form submission
+    document.getElementById('completionForm').addEventListener('submit', function(e) {
+        const requiredCheckboxes = document.querySelectorAll('input[type="checkbox"][required]');
+        let allChecked = true;
+        
+        requiredCheckboxes.forEach(function(checkbox) {
+            if (!checkbox.checked) {
+                allChecked = false;
+            }
+        });
+        
+        if (!allChecked) {
+            e.preventDefault();
+            alert('Please complete all quality checklist items before submitting.');
+            return;
+        }
+        
+        if (!fileInput.files.length) {
+            e.preventDefault();
+            alert('Please take a completion photo before submitting.');
+            return;
+        }
+        
+        // Show loading state
+        const submitBtn = document.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Submitting...';
+        
+        // Update step icon
+        const reportIcon = document.getElementById('reportIcon');
+        reportIcon.classList.remove('pending');
+        reportIcon.style.backgroundColor = '#28a745';
+        reportIcon.innerHTML = '<i class="bi bi-check"></i>';
+    });
+});
+
+function removePhoto() {
+    const fileInput = document.getElementById('completion_image');
+    const imagePreview = document.getElementById('imagePreview');
+    const uploadZone = document.querySelector('.photo-upload-zone');
+    
+    fileInput.value = '';
+    imagePreview.style.display = 'none';
+    uploadZone.style.display = 'block';
+    
+    // Reset step icon
+    const photoIcon = document.getElementById('photoIcon');
+    photoIcon.classList.add('pending');
+    photoIcon.style.backgroundColor = '#6c757d';
+    photoIcon.innerHTML = '<i class="bi bi-camera"></i>';
+}
+
+// Auto-save draft every 30 seconds (for notes)
+setInterval(function() {
+    const notes = document.getElementById('notes').value;
+    if (notes.trim()) {
+        localStorage.setItem('completion_notes_{{ request.id }}', notes);
+    }
+}, 30000);
+
+// Restore draft on page load
+window.addEventListener('load', function() {
+    const savedNotes = localStorage.getItem('completion_notes_{{ request.id }}');
+    if (savedNotes) {
+        document.getElementById('notes').value = savedNotes;
+    }
+});
+
+// Clear draft on successful submission
+document.getElementById('completionForm').addEventListener('submit', function() {
+    localStorage.removeItem('completion_notes_{{ request.id }}');
+});
+</script>
+{% endblock %}

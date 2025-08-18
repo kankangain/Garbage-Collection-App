@@ -1,0 +1,417 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Request Details - Garbage Collection System{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2>Request Details</h2>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item">
+                                {% if user.role == 'chairman' %}
+                                    <a href="{% url 'gc_requests:chairman_dashboard' %}">Dashboard</a>
+                                {% elif user.role == 'councilor' %}
+                                    <a href="{% url 'gc_requests:councilor_dashboard' %}">Dashboard</a>
+                                {% elif user.role == 'labour' %}
+                                    <a href="{% url 'gc_requests:labour_dashboard' %}">Dashboard</a>
+                                {% else %}
+                                    <a href="{% url 'gc_requests:user_dashboard' %}">Dashboard</a>
+                                {% endif %}
+                            </li>
+                            <li class="breadcrumb-item active">Request #{{ request.id }}</li>
+                        </ol>
+                    </nav>
+                </div>
+                <div class="btn-group">
+                    <a href="{% url 'gc_requests:track_request' request.id %}" class="btn btn-outline-info">
+                        <i class="bi bi-geo-alt"></i> Track Location
+                    </a>
+                    {% if user.role == 'user' and request.user == user %}
+                        {% if request.status == 'pending' or request.status == 'assigned' %}
+                            <button class="btn btn-outline-danger" onclick="cancelRequest({{ request.id }})">
+                                <i class="bi bi-x-circle"></i> Cancel Request
+                            </button>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Main Request Details -->
+        <div class="col-lg-8 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-file-text"></i> Request #{{ request.id }}
+                    </h5>
+                    <span class="badge status-{{ request.status }} fs-6">
+                        {{ request.get_status_display }}
+                        {% if request.is_overdue %}
+                            <i class="bi bi-exclamation-triangle ms-1"></i>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">Request Information</h6>
+                            <table class="table table-sm table-borderless">
+                                <tr>
+                                    <td><strong>Category:</strong></td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ request.get_category_display }}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Ward:</strong></td>
+                                    <td>
+                                        <span class="badge bg-info">Ward {{ request.ward_number }}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Submitted:</strong></td>
+                                    <td>{{ request.created_at|date:'M d, Y H:i' }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Last Updated:</strong></td>
+                                    <td>
+                                        {% if request.approved_at %}
+                                            {{ request.approved_at|date:'M d, Y H:i' }}
+                                        {% elif request.completed_at %}
+                                            {{ request.completed_at|date:'M d, Y H:i' }}
+                                        {% elif request.assigned_at %}
+                                            {{ request.assigned_at|date:'M d, Y H:i' }}
+                                        {% else %}
+                                            {{ request.created_at|date:'M d, Y H:i' }}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% if request.assigned_at %}
+                                <tr>
+                                    <td><strong>Assigned:</strong></td>
+                                    <td>{{ request.assigned_at|date:'M d, Y H:i' }}</td>
+                                </tr>
+                                {% endif %}
+                                {% if request.completed_at %}
+                                <tr>
+                                    <td><strong>Completed:</strong></td>
+                                    <td>{{ request.completed_at|date:'M d, Y H:i' }}</td>
+                                </tr>
+                                {% endif %}
+                                {% if request.approved_at %}
+                                <tr>
+                                    <td><strong>Approved:</strong></td>
+                                    <td>{{ request.approved_at|date:'M d, Y H:i' }}</td>
+                                </tr>
+                                {% endif %}
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-3">Location Details</h6>
+                            <table class="table table-sm table-borderless">
+                                <tr>
+                                    <td><strong>Address:</strong></td>
+                                    <td>{{ request.address }}</td>
+                                </tr>
+                                {% if request.landmark %}
+                                <tr>
+                                    <td><strong>Landmark:</strong></td>
+                                    <td>{{ request.landmark }}</td>
+                                </tr>
+                                {% endif %}
+                                {% if request.latitude and request.longitude %}
+                                <tr>
+                                    <td><strong>Coordinates:</strong></td>
+                                    <td>
+                                        <a href="https://maps.google.com?q={{ request.latitude }},{{ request.longitude }}" 
+                                           target="_blank" class="text-decoration-none">
+                                            {{ request.latitude|floatformat:6 }}, {{ request.longitude|floatformat:6 }}
+                                            <i class="bi bi-box-arrow-up-right ms-1"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                {% if request.assigned_labour %}
+                                <tr>
+                                    <td><strong>Assigned To:</strong></td>
+                                    <td>
+                                        <i class="bi bi-person-circle me-1"></i>
+                                        {{ request.assigned_labour.get_full_name|default:request.assigned_labour.username }}
+                                    </td>
+                                </tr>
+                                {% endif %}
+                            </table>
+                        </div>
+                    </div>
+
+                    {% if request.description %}
+                    <hr>
+                    <h6 class="text-muted mb-2">Description</h6>
+                    <div class="alert alert-light">
+                        {{ request.description }}
+                    </div>
+                    {% endif %}
+
+                    <!-- Garbage Image -->
+                    {% if request.garbage_image %}
+                    <hr>
+                    <h6 class="text-muted mb-3">Garbage Image</h6>
+                    <div class="text-center">
+                        <img src="{{ request.garbage_image.url }}" 
+                             class="img-fluid rounded" 
+                             alt="Garbage Image"
+                             style="max-height: 400px; cursor: pointer;"
+                             data-bs-toggle="modal" 
+                             data-bs-target="#imageModal">
+                        <br>
+                        <button class="btn btn-outline-primary btn-sm mt-2" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#imageModal">
+                            <i class="bi bi-zoom-in"></i> View Full Size
+                        </button>
+                    </div>
+                    {% endif %}
+
+                    <!-- Completion Report -->
+                    {% if request.status == 'completed' or request.status == 'approved' %}
+                        {% with request.completionreport_set.first as completion %}
+                        {% if completion %}
+                        <hr>
+                        <h6 class="text-muted mb-3">Completion Report</h6>
+                        <div class="card border-success">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p><strong>Completed by:</strong> {{ completion.labour.get_full_name|default:completion.labour.username }}</p>
+                                        <p><strong>Completion Date:</strong> {{ completion.created_at|date:'M d, Y H:i' }}</p>
+                                        {% if completion.notes %}
+                                            <p><strong>Notes:</strong> {{ completion.notes }}</p>
+                                        {% endif %}
+                                    </div>
+                                    {% if completion.completion_image %}
+                                    <div class="col-md-6 text-center">
+                                        <img src="{{ completion.completion_image.url }}" 
+                                             class="img-fluid rounded" 
+                                             alt="Completion Image"
+                                             style="max-height: 200px; cursor: pointer;"
+                                             data-bs-toggle="modal" 
+                                             data-bs-target="#completionImageModal">
+                                        <br>
+                                        <small class="text-muted">After completion</small>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endwith %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Status Timeline -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-clock-history"></i> Status Timeline
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        <div class="timeline-item completed">
+                            <div class="timeline-content">
+                                <h6>Request Submitted</h6>
+                                <p class="text-muted mb-0">{{ request.created_at|date:'M d, Y H:i' }}</p>
+                                <small>By {{ request.user.get_full_name|default:request.user.username }}</small>
+                            </div>
+                        </div>
+
+                        {% if request.assigned_at %}
+                        <div class="timeline-item completed">
+                            <div class="timeline-content">
+                                <h6>Labour Assigned</h6>
+                                <p class="text-muted mb-0">{{ request.assigned_at|date:'M d, Y H:i' }}</p>
+                                <small>{{ request.assigned_labour.get_full_name|default:request.assigned_labour.username }}</small>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if request.status == 'in_progress' or request.completed_at %}
+                        <div class="timeline-item {% if request.status == 'in_progress' %}active{% else %}completed{% endif %}">
+                            <div class="timeline-content">
+                                <h6>Work In Progress</h6>
+                                {% if request.status == 'in_progress' %}
+                                    <p class="text-muted mb-0">Currently working...</p>
+                                {% else %}
+                                    <p class="text-muted mb-0">Work completed</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if request.completed_at %}
+                        <div class="timeline-item {% if request.status == 'completed' %}active{% else %}completed{% endif %}">
+                            <div class="timeline-content">
+                                <h6>Work Completed</h6>
+                                <p class="text-muted mb-0">{{ request.completed_at|date:'M d, Y H:i' }}</p>
+                                <small>Awaiting councilor approval</small>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if request.approved_at %}
+                        <div class="timeline-item completed">
+                            <div class="timeline-content">
+                                <h6>Request Approved</h6>
+                                <p class="text-muted mb-0">{{ request.approved_at|date:'M d, Y H:i' }}</p>
+                                <small>Request successfully completed</small>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        {% if request.status == 'rejected' %}
+                        <div class="timeline-item rejected">
+                            <div class="timeline-content">
+                                <h6>Work Rejected</h6>
+                                <p class="text-muted mb-0">Quality not satisfactory</p>
+                                <small>Requires rework</small>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Request Statistics -->
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-info-circle"></i> Request Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted">Priority:</span>
+                        <span class="badge {% if request.is_overdue %}bg-danger{% elif request.status == 'pending' %}bg-warning{% else %}bg-success{% endif %}">
+                            {% if request.is_overdue %}High Priority{% elif request.status == 'pending' %}Normal{% else %}Processing{% endif %}
+                        </span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted">Estimated Time:</span>
+                        <span>72 hours</span>
+                    </div>
+                    {% if request.time_remaining %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted">Time Remaining:</span>
+                        <span class="{% if request.is_overdue %}text-danger{% else %}text-success{% endif %}">
+                            {{ request.time_remaining }}
+                        </span>
+                    </div>
+                    {% endif %}
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-muted">Request ID:</span>
+                        <code>#{{ request.id }}</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Image Modal -->
+{% if request.garbage_image %}
+<div class="modal fade" id="imageModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Request #{{ request.id }} - Garbage Image</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img src="{{ request.garbage_image.url }}" class="img-fluid" alt="Garbage Image">
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Completion Image Modal -->
+{% with request.completionreport_set.first as completion %}
+{% if completion and completion.completion_image %}
+<div class="modal fade" id="completionImageModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Completion Image</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img src="{{ completion.completion_image.url }}" class="img-fluid" alt="Completion Image">
+                <div class="mt-3">
+                    <p><strong>Completed by:</strong> {{ completion.labour.get_full_name|default:completion.labour.username }}</p>
+                    <p><strong>Date:</strong> {{ completion.created_at|date:'M d, Y H:i' }}</p>
+                    {% if completion.notes %}
+                        <p><strong>Notes:</strong> {{ completion.notes }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endwith %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function cancelRequest(requestId) {
+    if (confirm('Are you sure you want to cancel this request? This action cannot be undone.')) {
+        fetch(`/requests/api/cancel-request/${requestId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Request cancelled successfully.');
+                window.location.href = '{% url "gc_requests:my_requests" %}';
+            } else {
+                alert('Error cancelling request: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Error cancelling request. Please try again.');
+        });
+    }
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}
