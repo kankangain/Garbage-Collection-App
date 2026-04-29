@@ -11,6 +11,6 @@ class IframeAllowlistMiddleware:
         # Use CSP frame-ancestors for modern browser support.
         response.headers.pop('X-Frame-Options', None)
         response.headers['Content-Security-Policy'] = (
-            "frame-ancestors 'self' https://kankangain.com https://www.kankangain.com;"
+            "frame-ancestors 'self' https://kankangain.com https://www.kankangain.com http://localhost:3000;"
         )
         return response
